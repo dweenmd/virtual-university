@@ -1,0 +1,112 @@
+{
+  "semesters": {
+    "semester_1": {
+      "title": "Semester I (1st Year 1st Semester)",
+      "total_credits": "20.50",
+      "courses": [
+        {
+          "code": "CSE-1101",
+          "title": "Fundamentals of Computers and Computing",
+          "type": "Theory",
+          "credits": "2.0",
+          "hours": "30",
+          "prerequisite": "None",
+          "content": "<strong>Introduction to Computers:</strong> From a Key Press to Display, Hardware, Software, Operating System, Microprocessor, Memory Overview, File and File System. Input-Output Devices.<br><br><strong>Application Software:</strong> Basic Text Editor (gedit, Notepad), Document Processing, Spreadsheet, Presentation, Database, Mathematical Analysis, Simulation, Image and Video Editing, Games etc.<br><br><strong>Network and Internet:</strong> Networking Concept and Topologies, Network Addresses (MAC, IP and Port), Name vs. IP (role of DNS). Browser Software: Examples, URL, Security, Email, Email Address, Email - Client Software, Email Software in the Internet, Network Configuration and Basic Tools (ping, traceroute etc.).<br><br><strong>Number System:</strong> Concept of Bit, Electronic Representation of Bits. Bit-Array: Byte, Word, Double Word. Binary–to–Decimal Conversion, Binary Arithmetic, Bit-Shifting, Logic Representation (1-Bit, Bit-Array). Hexadecimal Arithmetic up to 32-Bit Array Representation. Conversion between Binary, Hexadecimal and Octal Numbers.<br><br><strong>Character Representation & Programming:</strong> Representation of Characters by Bit-Array: ASCII and UTF-8. Character Arithmetic: Case and Language Mapping and Changing. Memory: Introduction to Computer Memory. System Modeling and Flow Chart. Program Structure, Variables, Constants, I/O, Conditional Statements (If-Else), Nested If."
+        },
+        {
+          "code": "CSE-1102",
+          "title": "Discrete Mathematics",
+          "type": "Theory",
+          "credits": "3.0",
+          "hours": "45",
+          "prerequisite": "None",
+          "content": "<strong>Logics and Proofs:</strong> Propositional Logic, Applications of Propositional Logic, Propositional Equivalences, Predicates and Quantifiers, Nested Quantifiers, Rules of Inference, Introduction to Proofs.<br><br><strong>Structures & Number Theory:</strong> Set, Function, Sequence, Summation and Matrix: Sets, Set Operations, Functions, Sequences and Summations, Zero–One Matrices, Boolean Product. Number Theory: Divisibility and Modular Arithmetic, Integer Representations and Algorithms, Primes and Greatest Common Divisors, Modular Exponentiation.<br><br><strong>Induction & Advanced Topics:</strong> Mathematical Induction. Counting: The Basics of Counting, the Pigeonhole Principle, Permutations and Combinations, Binomial Coefficients and Identities. Applications of Recurrence Relations. Inclusion–Exclusion. Relations and Their Properties. Graphs, Euler and Hamilton Paths. Introduction to Trees."
+        },
+        {
+          "code": "EEE-1103",
+          "title": "Electrical Circuits",
+          "type": "Theory",
+          "credits": "3.0",
+          "hours": "45",
+          "prerequisite": "None",
+          "content": "<strong>Resistor & DC Circuits:</strong> Ohm’s Law, Power, Energy, Efficiency. Series/Parallel DC Circuits, Kirchhoff’s Voltage/Current Law, Voltage/Current Divider Rules, reduce and return approach, ladder networks.<br><br><strong>Methods & Theorems:</strong> Mesh analysis, Nodal analysis, Y-Δ and Δ-Y conversions. Superposition, Thevenin’s, Norton’s, Maximum Power Transfer theorems.<br><br><strong>Storage & AC Intro:</strong> Capacitors and Inductors charging/discharging phase, energy stored. Sinusoidal alternating waveforms, phase relations, Average and RMS values, Phasors (Rectangular and Polar form)."
+        },
+        {
+          "code": "CHE-1104",
+          "title": "Chemistry",
+          "type": "Theory",
+          "credits": "3.0",
+          "hours": "45",
+          "prerequisite": "None",
+          "content": "Bohr Atomic Model, Quantum Numbers, Pauli’s Principle, Aufbau Principle, Hund’s Rule, Electronic Configuration. Periodic Table, Chemical Bonding, Oxidation Reduction, Acid Base (pH, Buffer). State of Matter, Thermodynamics, Chemical Kinetics, Chemical Equilibrium, Electrochemistry, Biomolecules."
+        },
+        {
+          "code": "MATH-1105",
+          "title": "Differential and Integral Calculus",
+          "type": "Theory",
+          "credits": "3.0",
+          "hours": "45",
+          "prerequisite": "None",
+          "content": "Functions, Limits and Continuity, Sandwich Theorem. Derivatives, Rules of Differentiation, L'Hospital's Rule, Curve Sketching. Riemann Sum and Definite Integrals, Fundamental Theorem of Calculus, Applications of Integration (Area, Volumes)."
+        },
+        {
+          "code": "SS-1106",
+          "title": "Government and Public Administration",
+          "type": "Theory",
+          "credits": "2.0",
+          "hours": "30",
+          "prerequisite": "None",
+          "content": "Constitution of Bangladesh, fundamental rights, forms of government, organs of government (Legislative, Judiciary, Executive), good governance, local government, human resource management."
+        },
+        {
+          "code": "CSE-1111",
+          "title": "Fundamentals of Computers and Computing Lab",
+          "type": "Lab",
+          "credits": "1.5",
+          "hours": "45",
+          "prerequisite": "None",
+          "content": "Practical lab experiments and sessionals corresponding to the theoretical coursework of CSE-1101."
+        },
+        {
+          "code": "EEE-1113",
+          "title": "Electrical Circuits Lab",
+          "type": "Lab",
+          "credits": "1.5",
+          "hours": "45",
+          "prerequisite": "None",
+          "content": "Hands-on experiments validating DC/AC circuit components, network theorems, and laboratory safety protocols."
+        },
+        {
+          "code": "CHE-1114",
+          "title": "Chemistry Lab",
+          "type": "Lab",
+          "credits": "1.5",
+          "hours": "45",
+          "prerequisite": "None",
+          "content": "Practical wet-lab chemistry operations, titrations, and analysis based on CHE-1104 parameters."
+        }
+      ]
+    },
+    "semester_2": {
+      "title": "Semester II (1st Year 2nd Semester)",
+      "total_credits": "21.00",
+      "courses": [
+        {
+          "code": "CSE-1201",
+          "title": "Structured Programming Language",
+          "type": "Theory",
+          "credits": "3.0",
+          "hours": "45",
+          "prerequisite": "CSE-1101",
+          "content": "এখানে ২য় সেমিস্টারের সিলেবাসের টপিকগুলো বসাবেন..."
+        }
+      ]
+    },
+    "semester_3": { "title": "Semester III", "total_credits": "20.00", "courses": [] },
+    "semester_4": { "title": "Semester IV", "total_credits": "20.00", "courses": [] },
+    "semester_5": { "title": "Semester V", "total_credits": "20.00", "courses": [] },
+    "semester_6": { "title": "Semester VI", "total_credits": "20.00", "courses": [] },
+    "semester_7": { "title": "Semester VII", "total_credits": "21.50", "courses": [] },
+    "semester_8": { "title": "Semester VIII", "total_credits": "19.00", "courses": [] }
+  }
+}

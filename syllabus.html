@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Syllabus Explorer - Virtual Varsity</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        :root {
+            --color-du-maroon: #73001a;
+            --color-du-maroon-dark: #540012;
+            --color-du-gold: #d4af37;
+        }
+    </style>
+</head>
+
+<body class="bg-slate-50 font-sans text-slate-800 antialiased">
+
+    <nav
+        class="bg-white/90 backdrop-blur-md sticky top-0 z-50 border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-xs">
+        <div class="flex items-center space-x-3">
+            <span class="text-2xl bg-amber-50 p-1.5 rounded-xl border border-amber-200">🎓</span>
+            <div class="flex flex-col">
+                <span
+                    class="text-xl font-black bg-gradient-to-r from-[#73001a] to-[#a31d34] bg-clip-text text-transparent tracking-tight">Virtual
+                    Varsity</span>
+                <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Academic Blueprint</span>
+            </div>
+        </div>
+        <a href="index.php"
+            class="border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition duration-200">
+            ← Back to Portal
+        </a>
+    </nav>
+
+    <header class="max-w-6xl mx-auto px-4 pt-12 pb-6">
+        <div class="text-center max-w-2xl mx-auto mb-10">
+            <span
+                class="bg-amber-50 text-[#73001a] font-bold tracking-wider text-xs px-3 py-1.5 rounded-full uppercase border border-amber-200/60">B.Sc.
+                in CSE Curriculum</span>
+            <h1 class="text-3xl md:text-4xl font-black text-slate-900 tracking-tight mt-3">Interactive Course Explorer
+            </h1>
+            <p class="text-slate-500 text-sm mt-2">University of Dhaka Affiliated Engineering College Syllabus (Session
+                2019-20). Total Credits: 160.50</p>
+        </div>
+
+        <div
+            class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm max-w-md mx-auto flex items-center space-x-3">
+            <label for="semesterFilter"
+                class="text-xs font-bold uppercase tracking-wider text-slate-400 whitespace-nowrap">Jump To:</label>
+            <select id="semesterFilter" onchange="filterSemester()"
+                class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:outline-none focus:border-[#73001a] text-sm font-semibold text-slate-700 bg-slate-50">
+                <option value="all">📚 Show All Semesters (Full 4 Years)</option>
+                <option value="1">1st Year, 1st Semester (Semester I)</option>
+                <option value="2">1st Year, 2nd Semester (Semester II)</option>
+                <option value="3">2nd Year, 1st Semester (Semester III)</option>
+                <option value="4">2nd Year, 2nd Semester (Semester IV)</option>
+                <option value="5">3rd Year, 1st Semester (Semester V)</option>
+                <option value="6">3rd Year, 2nd Semester (Semester VI)</option>
+                <option value="7">4th Year, 1st Semester (Semester VII)</option>
+                <option value="8">4th Year, 2nd Semester (Semester VIII)</option>
+            </select>
+        </div>
+    </header>
+
+    <main class="max-w-5xl mx-auto px-4 pb-24 grid grid-cols-1 gap-12" id="syllabusContainer">
+
+        <div class="semester-box bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-xs hover:shadow-md transition-all duration-300"
+            data-semester="1">
+            <div
+                class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-5 mb-6 gap-4">
+                <div>
+                    <span
+                        class="bg-amber-50 text-[#73001a] text-[11px] font-bold px-3 py-1.5 rounded-full uppercase border border-amber-200/60 tracking-wider">1st
+                        Year, 1st Semester</span>
+                    <h3 class="text-xl font-black text-slate-900 tracking-tight mt-2.5">Semester I</h3>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">📚 6 Theory</span>
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">🧪 3 Lab</span>
+                    <span class="bg-amber-100 text-amber-900 px-3 py-1.5 rounded-xl">🎯 20.50 Total Credits</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-1101</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Fundamentals of Computers and
+                                Computing</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">2.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Introduction to
+                        computer systems, hardware components, history of computing, computing environments, binary
+                        system representation, numbering systems, software architectures, algorithms and flowcharts
+                        concept, basic system logic and application layers.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-1102</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Discrete Mathematics</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Set theory,
+                        mathematical logic, propositional and predicate calculus, relations, functions, graph theory,
+                        trees, algebraic systems, groups, rings, combinatorics, recurrence relations, and permutations.
+                    </p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">EEE-1103</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Electrical Circuits</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>DC circuit analysis,
+                        Ohm's Law, Kirchhoff's current and voltage laws, mesh and nodal analysis, network theorems
+                        (Thevenin, Norton, Superposition), AC circuit basics, phasors, RLC circuits, complex power.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CHE-1104</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Chemistry</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Atomic structure,
+                        periodic classification, chemical bonding, thermodynamics, electrochemistry, chemical kinetics,
+                        solutions, phase rules, and introductory environmental chemistry.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">MATH-1105</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Differential and Integral
+                                Calculus</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Functions, limits,
+                        continuity, differentiation of algebraic and transcendental functions, successive
+                        differentiation, Leibnitz's theorem, Mean Value theorems, Taylor and Maclaurin expansions,
+                        integration techniques, definite integrals, areas under curves.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">SS-1106</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Government and Public
+                                Administration</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">2.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Basic concepts of
+                        governance, state apparatus, constitution of Bangladesh, public policy formulation,
+                        administrative systems, and local government frameworks.</p>
+                </div>
+
+                <div class="border-t border-dashed border-slate-200 my-2 pt-2"><span
+                        class="text-xs font-bold tracking-wider text-slate-400 uppercase block mb-3">Sessional
+                        Laboratories</span></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-1111 (Lab)</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Computers & Computing Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">EEE-1113 (Lab)</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Electrical Circuits Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CHE-1114 (Lab)</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Chemistry Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="semester-box bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-xs hover:shadow-md transition-all duration-300"
+            data-semester="2">
+            <div
+                class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-5 mb-6 gap-4">
+                <div>
+                    <span
+                        class="bg-amber-50 text-[#73001a] text-[11px] font-bold px-3 py-1.5 rounded-full uppercase border border-amber-200/60 tracking-wider">1st
+                        Year, 2nd Semester</span>
+                    <h3 class="text-xl font-black text-slate-900 tracking-tight mt-2.5">Semester II</h3>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">📚 5 Theory</span>
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">🧪 4 Lab</span>
+                    <span class="bg-amber-100 text-amber-900 px-3 py-1.5 rounded-xl">🎯 21.50 Total Credits</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-1201</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Fundamentals of Programming
+                            </h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-1101, CSE-1102</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Basic I/O, Data
+                        Types, Conditionals, Loops (while, for, do-while), Formatted I/O, Nested Loops. Functions (Call
+                        by Value/Reference, Recursion). Arrays (1D, 2D, Multidimensional). Strings operations without
+                        library functions, structures, pointers architecture, dynamic memory allocation (malloc, calloc,
+                        realloc, free), file management operations, preprocessors, and macros.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-1202</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Digital Logic Design</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Number systems,
+                        logic gates, Boolean algebra, K-Maps, Minimization schemas. Latches, Flip-Flops (SR, JK, D, T),
+                        Counters (Asynchronous, Synchronous), Shift registers, decoders, encoders, multiplexers,
+                        demultiplexers, RAM/ROM architectures, and adder/subtractor arithmetic circuits.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">PHY-1203</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Physics</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Thermodynamics laws,
+                        entropy, Carnot cycle. Structure of matter (crystallography, Miller indices, Bragg's law, band
+                        theory). Waves & Oscillations (SHM, damped/forced oscillations, acoustics, resonance). Physical
+                        optics (interference, diffraction, polarization, gratings).</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">MATH-1204</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Methods of Integration,
+                                Differential Equations and Series</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                MATH-1105</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Integration by
+                        parts, trigonometric substitutions, partial fractions. Modeling first order differential
+                        equations, separable/linear equations. Polar coordinates. Infinite sequences and convergence
+                        tests, Power series, Taylor and Maclaurin polynomials.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">ENG-1205</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Developing English Language
+                                Skills</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">2.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>English phonetics,
+                        vocabulary enrichment techniques, structural mechanics, reading comprehension strategies, essay
+                        and discourse development, business correspondence, report structures, and technical writing
+                        foundations.</p>
+                </div>
+
+                <div class="border-t border-dashed border-slate-200 my-2 pt-2"><span
+                        class="text-xs font-bold tracking-wider text-slate-400 uppercase block mb-3">Sessional
+                        Laboratories</span></div>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-1211</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Programming Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">3.0
+                            Cr</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-1212</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Digital Logic Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Cr</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">PHY-1213</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Physics Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Cr</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">ENG-1215</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">English Skills Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Cr</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="semester-box bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-xs hover:shadow-md transition-all duration-300"
+            data-semester="3">
+            <div
+                class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-5 mb-6 gap-4">
+                <div>
+                    <span
+                        class="bg-amber-50 text-[#73001a] text-[11px] font-bold px-3 py-1.5 rounded-full uppercase border border-amber-200/60 tracking-wider">2nd
+                        Year, 1st Semester</span>
+                    <h3 class="text-xl font-black text-slate-900 tracking-tight mt-2.5">Semester III</h3>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">📚 5 Theory</span>
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">🧪 3 Lab</span>
+                    <span class="bg-amber-100 text-amber-900 px-3 py-1.5 rounded-xl">🎯 21.00 Total Credits</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-2101</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Data Structures and
+                                Algorithms-I</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-1201</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Arrays, Linked Lists
+                        (Singly, Doubly, Circular), Stacks and Queues applications. Searching (Linear, Binary), Basic
+                        Sorting (Bubble, Insertion, Selection, Merge, Quick). Trees basics (BST operations), Hash
+                        tables, recursion analysis and Time Complexity (Big-O notation).</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-2102</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Object Oriented Programming-I
+                            </h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-1201</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Introduction to OOP
+                        paradigms, Classes, Objects, Abstraction, Encapsulation, Inheritance, Polymorphism. Method
+                        overloading and overriding, constructors, access modifiers, interfaces, exception handling, and
+                        file I/O operations inside object contexts (C++/Java syntax basics).</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">EEE-2103</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Electronic Devices and
+                                Circuits</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                EEE-1103</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Semiconductor
+                        diodes, Zener diodes, Rectifier circuits. Bipolar Junction Transistors (BJT) characteristics,
+                        biasing networks, amplifiers. Field Effect Transistors (FET/MOSFET) architectures, operational
+                        amplifiers (Op-Amps) and basic applications.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">MATH-2104</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Linear Algebra</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Matrices and
+                        determinants, systems of linear equations, Gaussian elimination. Vector spaces, linear
+                        independence, basis and dimension. Linear transformations, Eigenvalues, Eigenvectors, and
+                        diagonalization maps.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">MATH-2105</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Coordinate Geometry and
+                                Vector Analysis</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>2D and 3D coordinate
+                        geometry transformations, straight lines, planes, spheres. Vector calculus, dot/cross products,
+                        gradient, divergence, curl theorems (Green's, Gauss, Stokes equations).</p>
+                </div>
+
+                <div class="border-t border-dashed border-slate-200 my-2 pt-2"><span
+                        class="text-xs font-bold tracking-wider text-slate-400 uppercase block mb-3">Sessional
+                        Laboratories</span></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-2111</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Data Structures Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-2112</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">OOP-I Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">EEE-2113</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Electronics Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="semester-box bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-xs hover:shadow-md transition-all duration-300"
+            data-semester="4">
+            <div
+                class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-5 mb-6 gap-4">
+                <div>
+                    <span
+                        class="bg-amber-50 text-[#73001a] text-[11px] font-bold px-3 py-1.5 rounded-full uppercase border border-amber-200/60 tracking-wider">2nd
+                        Year, 2nd Semester</span>
+                    <h3 class="text-xl font-black text-slate-900 tracking-tight mt-2.5">Semester IV</h3>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">📚 5 Theory</span>
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">🧪 3 Lab</span>
+                    <span class="bg-amber-100 text-amber-900 px-3 py-1.5 rounded-xl">🎯 19.50 Total Credits</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-2201</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Data Structures and
+                                Algorithms-II</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-2101</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Advanced graph
+                        strategies, BFS, DFS, shortest paths (Dijkstra, Bellman-Ford, Floyd-Warshall). Minimum Spanning
+                        Trees (Prim, Kruskal). Greedy algorithms, Dynamic Programming (LCS, Knapsack), NP-Completeness
+                        introductions.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-2202</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Database Management Systems-I
+                            </h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Database concepts,
+                        ER-modeling, relational models. Relational algebra. SQL schemas (DDL, DML, relational
+                        assertions). Normalization techniques (1NF, 2NF, 3NF, BCNF). File organization, basic indexing
+                        architectures.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-2203</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Computer Architecture</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-1202</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Design components of
+                        Von Neumann machine, CPU units, pipelining architectures. ALU designs, arithmetic registers,
+                        control unit operations (hardwired, microprogrammed). Memory hierarchy, cache configurations,
+                        virtual memory, and I/O setups.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">MATH-2204</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Complex Variable and
+                                Statistical Analysis</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Complex functions,
+                        Cauchy-Riemann equations, residue integration. Probability definitions, random variables,
+                        distributions (Binomial, Poisson, Normal). Hypothesis metrics, data regressions.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">ECON-2205</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Economics</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">2.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Micro &
+                        Macroeconomics foundations. Laws of supply and demand, cost optimization analyses, national
+                        income audits, inflation indexes, monetary metrics, and project budget balancing frameworks.</p>
+                </div>
+
+                <div class="border-t border-dashed border-slate-200 my-2 pt-2"><span
+                        class="text-xs font-bold tracking-wider text-slate-400 uppercase block mb-3">Sessional
+                        Laboratories</span></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-2211</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Algorithms Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-2212</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Database-I Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-2213</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Assembly Language Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="semester-box bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-xs hover:shadow-md transition-all duration-300"
+            data-semester="5">
+            <div
+                class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-5 mb-6 gap-4">
+                <div>
+                    <span
+                        class="bg-amber-50 text-[#73001a] text-[11px] font-bold px-3 py-1.5 rounded-full uppercase border border-amber-200/60 tracking-wider">3rd
+                        Year, 1st Semester</span>
+                    <h3 class="text-xl font-black text-slate-900 tracking-tight mt-2.5">Semester V</h3>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">📚 5 Theory</span>
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">🧪 3 Lab</span>
+                    <span class="bg-amber-100 text-amber-900 px-3 py-1.5 rounded-xl">🎯 19.50 Total Credits</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-3101</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Software Engineering</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Software lifecycle
+                        paradigms (Waterfall, Agile, Scrum). Software Requirement Specification (SRS) architecture, UML
+                        design maps, architectural patternings, debugging paradigms, validation testing matrices, and
+                        project scaling analytics.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-3102</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Data Communication</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Signals and signal
+                        properties, Fourier transforms. Transmission media, analog-to-digital conversions, modulation
+                        mappings (ASK, FSK, PSK, QAM). Multiplexing pipelines (FDM, TDM). Error corrections (CRC
+                        protocols).</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-3103</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Operating Systems</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-2203</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>OS services, process
+                        threads, scheduling matrices (FIFO, Round Robin, Priority metrics). Critical sections,
+                        semaphores, deadlocks mitigation (Banker's algorithm). Paging, segmentation hierarchies, file
+                        management strategies.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-3104</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Theory of Computation</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-1102</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Finite Automata
+                        (DFA, NFA definitions), Regular expressions, pumping lemmas. Context-free grammars, Pushdown
+                        Automata (PDA models). Turing Machine computations, halting problems, undecidability metrics.
+                    </p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-3105</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Microprocessors and
+                                Microcontrollers</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-2203</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Intel 8086
+                        microarchitecture architecture, register sets, segmentation logic, addressing controls. Pin
+                        layout systems, memory bank interfaces. Programmable peripheral controls (8255, 8254). 8051
+                        microcontroller cores, register models.</p>
+                </div>
+
+                <div class="border-t border-dashed border-slate-200 my-2 pt-2"><span
+                        class="text-xs font-bold tracking-wider text-slate-400 uppercase block mb-3">Sessional
+                        Laboratories</span></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-3111</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Software Engineering Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-3113</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Operating Systems Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-3115</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Microprocessors Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="semester-box bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-xs hover:shadow-md transition-all duration-300"
+            data-semester="6">
+            <div
+                class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-5 mb-6 gap-4">
+                <div>
+                    <span
+                        class="bg-amber-50 text-[#73001a] text-[11px] font-bold px-3 py-1.5 rounded-full uppercase border border-amber-200/60 tracking-wider">3rd
+                        Year, 2nd Semester</span>
+                    <h3 class="text-xl font-black text-slate-900 tracking-tight mt-2.5">Semester VI</h3>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">📚 5 Theory</span>
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">🧪 3 Lab</span>
+                    <span class="bg-amber-100 text-amber-900 px-3 py-1.5 rounded-xl">🎯 19.50 Total Credits</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-3201</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Compiler Design</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-3104</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Lexical processing
+                        implementations, Tokenizers, Lex/Flex tools. Parsing engine design (LL, LR parsers, Yacc/Bison
+                        setups). Syntax Directed Translations, intermediate syntax representations, DAG graphs, code
+                        emission optimization algorithms.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-3202</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Computer Networks</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-3102</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>ISO/OSI & TCP/IP
+                        stack layers. Data link frames, sliding window controls, routing engines (RIP, OSPF, BGP
+                        protocols). Transport sockets (TCP/UDP mechanisms), congestion control loop structures, and
+                        application level controls (DNS, HTTP architectures).</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-3203</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Object Oriented
+                                Programming-II</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-2102</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Advanced Java/C#,
+                        generic class data configurations, multithreading control models, runtime reflection
+                        abstractions. GUI toolkit event patterns, network programming adapters (Socket API), database
+                        binding engines (JDBC/Hibernate mappings).</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-3204</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Database Management
+                                Systems-II</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-red-50 text-red-800 border border-red-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                CSE-2202</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Query compiler
+                        metrics, relational cost transformations. Transaction ACID logs, serialization checking maps.
+                        Deadlock avoidance logic. Distributed database architectures, NoSQL models, warehousing
+                        pipelines.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-3205</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Technical Writing and
+                                Presentation</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">1.5 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Research
+                        documentation frameworks, LaTeX layout structuring, IEEE submission style standards, data
+                        visualizations, and project poster design methods.</p>
+                </div>
+
+                <div class="border-t border-dashed border-slate-200 my-2 pt-2"><span
+                        class="text-xs font-bold tracking-wider text-slate-400 uppercase block mb-3">Sessional
+                        Laboratories</span></div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-3211</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Compiler Design Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-3212</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Computer Networks Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-3213</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">OOP-II (Java) Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="semester-box bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-xs hover:shadow-md transition-all duration-300"
+            data-semester="7">
+            <div
+                class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-5 mb-6 gap-4">
+                <div>
+                    <span
+                        class="bg-amber-50 text-[#73001a] text-[11px] font-bold px-3 py-1.5 rounded-full uppercase border border-amber-200/60 tracking-wider">4th
+                        Year, 1st Semester</span>
+                    <h3 class="text-xl font-black text-slate-900 tracking-tight mt-2.5">Semester VII</h3>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">📚 4 Theory</span>
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">⚙️ Project Part I</span>
+                    <span class="bg-amber-100 text-amber-900 px-3 py-1.5 rounded-xl">🎯 16.50 Total Credits</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <div class="border border-slate-100 bg-amber-50/5 rounded-2xl p-5 border-l-4 border-l-[#73001a]">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-4100 (Core Part
+                                I)</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Graduation Project / Thesis
+                                Phase-I</h4>
+                        </div>
+                        <span class="bg-amber-100 text-amber-950 font-bold px-3 py-1 rounded-xl text-xs">3.0
+                            Credits</span>
+                    </div>
+                    <p class="text-slate-500 text-xs mt-2">Initial proposal review, logic flow setups, research schema
+                        configurations, domain model mapping, and foundational milestone code checkins (e.g., BlockVote
+                        setup / NL2SQL engine mapping benchmarks).</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-4101</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Artificial Intelligence</h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>State spaces
+                        exploration models, DFS, BFS, A* algorithms, heuristic weights. Game trees (Minimax
+                        optimization, Alpha-Beta pruning loops). Knowledge representation schemas, first-order logic
+                        frameworks. Machine learning basics, neural structures.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-slate-400 tracking-wider uppercase">CSE-4111 /
+                                CSE-4123</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Elective Option I & Option II
+                                (Specializations)</h4>
+                        </div>
+                        <span class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-bold">6.0
+                            Credits</span>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed">Advanced topics selected from official academic
+                        elective pathways including Machine Learning models, Digital Image Processing kernels, Computer
+                        Graphics vector algorithms, or Network Security cryptography protocols.</p>
+                </div>
+
+                <div class="border-t border-dashed border-slate-200 my-2 pt-2"><span
+                        class="text-xs font-bold tracking-wider text-slate-400 uppercase block mb-3">Sessional
+                        Laboratories</span></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-4112</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Artificial Intelligence Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-4122</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Elective Option Lab</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="semester-box bg-white rounded-3xl border border-slate-200 p-6 md:p-8 shadow-xs hover:shadow-md transition-all duration-300"
+            data-semester="8">
+            <div
+                class="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-100 pb-5 mb-6 gap-4">
+                <div>
+                    <span
+                        class="bg-amber-50 text-[#73001a] text-[11px] font-bold px-3 py-1.5 rounded-full uppercase border border-amber-200/60 tracking-wider">4th
+                        Year, 2nd Semester</span>
+                    <h3 class="text-xl font-black text-slate-900 tracking-tight mt-2.5">Semester VIII</h3>
+                </div>
+                <div class="flex flex-wrap gap-2 text-xs font-bold text-slate-600">
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">📚 3 Theory</span>
+                    <span class="bg-slate-100 px-3 py-1.5 rounded-xl">🏁 Final Defense</span>
+                    <span class="bg-amber-100 text-amber-900 px-3 py-1.5 rounded-xl">🎯 15.00 Total Credits</span>
+                </div>
+            </div>
+            <div class="grid grid-cols-1 gap-4">
+                <div class="border border-slate-100 bg-amber-50/5 rounded-2xl p-5 border-l-4 border-l-amber-500">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                        <div><span class="text-xs font-bold text-amber-700 tracking-wider uppercase">CSE-4200 (Core
+                                Core)</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Graduation Project / Thesis
+                                Phase-II (Final Defense)</h4>
+                        </div>
+                        <span class="bg-amber-100 text-amber-950 font-bold px-3 py-1 rounded-xl text-xs">3.0
+                            Credits</span>
+                    </div>
+                    <p class="text-slate-500 text-xs mt-2">Full system prototype testing, architecture implementation
+                        audits, deployment configurations, and board panel final jury evaluation defense presentations.
+                    </p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-[#73001a] tracking-wider uppercase">CSE-4246
+                                (Elective)</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Natural Language Processing
+                            </h4>
+                        </div>
+                        <div class="flex flex-wrap gap-1.5 text-[11px] font-bold"><span
+                                class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg">3.0 Credits</span><span
+                                class="bg-emerald-50 text-emerald-800 border border-emerald-200/60 px-2.5 py-1 rounded-lg">Prereq:
+                                None</span></div>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed"><strong
+                            class="text-slate-800 font-semibold block mb-1">Course Content:</strong>Ambiguity in
+                        languages, language modeling pipelines, Naive Bayes classifications. Markov chains, N-gram token
+                        probabilities, smoothing algorithms. Hidden Markov Models (HMM), Part of Speech (POS) tagging.
+                        Context-Free Grammars (CFG parsing), CYK algorithms, Beam search, and Machine Translation
+                        matrixes.</p>
+                </div>
+                <div
+                    class="border border-slate-100 bg-slate-50/50 rounded-2xl p-5 hover:border-[#73001a]/20 hover:bg-white transition duration-200">
+                    <div
+                        class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3 mb-3">
+                        <div><span class="text-xs font-bold text-slate-400 tracking-wider uppercase">CSE-4231 /
+                                CSE-4255</span>
+                            <h4 class="text-base font-black text-slate-900 tracking-tight">Elective Option III & Option
+                                IV (Advanced Applications)</h4>
+                        </div>
+                        <span class="bg-slate-200/80 text-slate-700 px-2.5 py-1 rounded-lg text-xs font-bold">6.0
+                            Credits</span>
+                    </div>
+                    <p class="text-slate-600 text-xs leading-relaxed">Advanced study models focusing on Big Data
+                        analytics pipelines, Distributed cloud infrastructure designs, Human Computer Interaction (HCI)
+                        models, or Advanced Cryptographic defense paradigms.</p>
+                </div>
+
+                <div class="border-t border-dashed border-slate-200 my-2 pt-2"><span
+                        class="text-xs font-bold tracking-wider text-slate-400 uppercase block mb-3">Sessional
+                        Laboratories & Vivas</span></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-4242</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Elective Option Lab Specialized</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                    <div class="bg-amber-50/10 border border-slate-100 p-4 rounded-xl"><span
+                            class="text-[10px] font-bold text-amber-700 block uppercase">CSE-4288</span>
+                        <h5 class="text-xs font-bold text-slate-900 mt-1">Comprehensive Grand Viva Voce</h5><span
+                            class="text-[10px] bg-amber-100 text-amber-800 font-bold px-2 py-0.5 rounded mt-2 inline-block">1.5
+                            Credits</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <script>
+        function filterSemester() {
+            const selectedValue = document.getElementById('semesterFilter').value;
+            const boxes = document.querySelectorAll('.semester-box');
+
+            boxes.forEach(box => {
+                if (selectedValue === 'all') {
+                    // Show every semester container smoothly
+                    box.style.display = 'block';
+                } else {
+                    // Match attributes layer dynamically
+                    if (box.getAttribute('data-semester') === selectedValue) {
+                        box.style.display = 'block';
+                    } else {
+                        box.style.display = 'none';
+                    }
+                }
+            });
+        }
+    </script>
+</body>
+
+</html>
