@@ -926,6 +926,6 @@ $courses_list = $conn->query("
         });
     </script>
 </body>
-//end
+
 
 </html>
