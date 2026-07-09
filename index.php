@@ -238,8 +238,8 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
                 <span
                     class="nav-logo-badge text-2xl w-11 h-11 flex items-center justify-center bg-gradient-to-br from-[color:var(--color-du-maroon)] to-[color:var(--color-du-maroon-dark)] rounded-xl text-white shadow-sm">🎓</span>
                 <div class="flex flex-col leading-none">
-                    <span class="font-display text-xl font-semibold text-stone-900 tracking-tight">Varsity
-                        Nexus</span>
+                    <span class="font-display text-xl font-semibold text-stone-900 tracking-tight">Virtual
+                        Varsity</span>
                     <span
                         class="text-xs uppercase tracking-[0.18em] text-[color:var(--color-du-gold)] font-bold mt-1">Unified
                         Academic Network</span>
@@ -248,8 +248,9 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
 
             <div class="hidden md:flex items-center space-x-9 text-base font-semibold text-stone-600">
                 <a href="#hero" data-nav-link class="nav-link active-link focus-ring rounded">Home</a>
-                <a href="#curriculum" data-nav-link class="nav-link focus-ring rounded">Syllabus Explorer</a>
+
                 <a href="#login-portal" data-nav-link class="nav-link focus-ring rounded">LMS Portals</a>
+                <a href="#curriculum" data-nav-link class="nav-link focus-ring rounded">Syllabus Explorer</a>
             </div>
 
             <div class="flex items-center space-x-3">
