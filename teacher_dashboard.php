@@ -1,12 +1,12 @@
 <?php
-// ১. নিরাপত্তা গেটকিপার এবং সেশন হ্যান্ডলার (সবার আগে থাকতে হবে)
+// 1. Security gatekeeper and session handler (must run before anything else)
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 include 'db.php';
 
-// শুধুমাত্র শিক্ষকরাই এই পেজ অ্যাক্সেস করতে পারবেন, না হলে লগইন পেজে রিডাইরেক্ট করবে
+// Only teachers may access this page; otherwise redirect to the login page
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
     header("Location: index.php");
     exit();
@@ -15,20 +15,20 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
 $teacher_id = $_SESSION['user_id'];
 $message = "";
 
-// ১. অ্যাকশন হ্যান্ডলার: গুগুল মিট সেশন + সিক্রেট অ্যাটেনডেন্স টোকেন লঞ্চ
+// 1. Action handler: launch a Google Meet session + secret attendance token
 if (isset($_POST['launch_meet'])) {
     $course_id = $_POST['course_id'];
     $title = mysqli_real_escape_string($conn, $_POST['title']);
     $meet_url = mysqli_real_escape_string($conn, $_POST['meet_url']);
-    $token = rand(1000, 9999); // ৪ ডিজিটের র্যান্ডম সিক্রেট টোকেন
+    $token = rand(1000, 9999); // 4-digit random secret token
 
-    // আগের লাইভ ক্লাসগুলো কমপ্লিট করে নতুন ক্লাস লাইভ করা
+    // Mark previous live classes as completed, then launch the new class as live
     $conn->query("UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id'");
     $conn->query("INSERT INTO online_class_tests (course_id, title, status, zoom_link, test_type, attendance_token) VALUES ('$course_id', '$title', 'LIVE NOW', '$meet_url', 'meet', '$token')");
     $message = "🟢 Live Class Launched! Secret Attendance Token for Students: <strong class='text-red-600 text-lg font-mono'>$token</strong>";
 }
 
-// ২. অ্যাকশন হ্যান্ডলার: ইনস্ট্যান্ট এমসিকিউ (MCQ) টেস্ট ডেপ্লয় (কারেক্ট আনসারসহ)
+// 2. Action handler: deploy an instant MCQ test (with correct answer)
 if (isset($_POST['launch_mcq'])) {
     $course_id = $_POST['course_id'];
     $question = mysqli_real_escape_string($conn, $_POST['mcq_question']);
@@ -36,14 +36,14 @@ if (isset($_POST['launch_mcq'])) {
     $b = mysqli_real_escape_string($conn, $_POST['op_b']);
     $c = mysqli_real_escape_string($conn, $_POST['op_c']);
     $d = mysqli_real_escape_string($conn, $_POST['op_d']);
-    $correct_option = mysqli_real_escape_string($conn, $_POST['correct_option']); // ডাটাবেজে সঠিক উত্তর সেভের জন্য
+    $correct_option = mysqli_real_escape_string($conn, $_POST['correct_option']); // saved to the database as the correct answer
 
     $conn->query("UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id'");
     $conn->query("INSERT INTO online_class_tests (course_id, title, status, test_type, option_a, option_b, option_c, option_d, correct_option, zoom_link) VALUES ('$course_id', '$question', 'LIVE NOW', 'mcq', '$a', '$b', '$c', '$d', '$correct_option', '#')");
     $message = "⚡ Live MCQ Assessment deployed successfully with Correct Answer Set!";
 }
 
-// ৩. অ্যাকশন হ্যান্ডলার: পিডিএফ (PDF) অ্যাসাইনমেন্ট আপলোড
+// 3. Action handler: upload a PDF assignment
 if (isset($_POST['launch_pdf'])) {
     $course_id = $_POST['course_id'];
     $title = mysqli_real_escape_string($conn, $_POST['pdf_title']);
@@ -72,7 +72,7 @@ if (isset($_POST['launch_pdf'])) {
     }
 }
 
-// ৪. অ্যাকশন হ্যান্ডলার: ক্লাস লেকচার নোট আপলোড
+// 4. Action handler: upload a lecture note
 if (isset($_POST['upload_note'])) {
     $course_id = $_POST['course_id'];
     $title = mysqli_real_escape_string($conn, $_POST['note_title']);
@@ -100,7 +100,7 @@ if (isset($_POST['upload_note'])) {
     }
 }
 
-// ডাটাবেজ থেকে এই নির্দিষ্ট শিক্ষকের আন্ডারে থাকা সব কোর্স খুঁজে বের করা
+// Find every course assigned to this specific teacher
 $my_courses_query = $conn->query("SELECT * FROM courses WHERE teacher_id='$teacher_id' ORDER BY semester ASC, course_code ASC");
 $courses_array = [];
 if ($my_courses_query) {
@@ -117,47 +117,95 @@ if ($my_courses_query) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Faculty Workspace - Virtual Varsity</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --maroon: #73001a;
+            --maroon-deep: #3d0510;
+            --maroon-line: #a31d34;
+            --gold: #a3781f;
+            --gold-soft: #c9a227;
+            --paper: #f7f4ee;
+            --paper-dim: #efe9dd;
+            --ink: #251b16;
+            --ink-soft: #7c7166;
+            --line: #e2d9c8;
+
+            --gold-25: rgba(163, 120, 31, 0.25);
+            --gold-30: rgba(163, 120, 31, 0.30);
+            --gold-40: rgba(163, 120, 31, 0.40);
+            --paper-dim-50: rgba(239, 233, 221, 0.5);
+            --paper-dim-60: rgba(239, 233, 221, 0.6);
+            --ink-soft-70: rgba(124, 113, 102, 0.7);
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--paper);
+            color: var(--ink);
+            font-size: 16px;
+        }
+
+        .font-display {
+            font-family: 'Fraunces', serif;
+            font-optical-sizing: auto;
+        }
+
+        .font-data {
+            font-family: 'IBM Plex Mono', monospace;
+        }
+
+        ::selection {
+            background: var(--gold-soft);
+            color: var(--maroon-deep);
+        }
+    </style>
 </head>
 
-<body class="bg-slate-50 text-slate-800 font-sans antialiased">
+<body class="antialiased">
 
-    <nav class="bg-indigo-950 px-6 py-4 text-white flex justify-between items-center shadow-md">
-        <div class="flex items-center space-x-2">
-            <span class="text-xl">👨‍🏫</span>
-            <h1 class="text-base font-bold tracking-wide">Faculty Portal Workspace:
+    <nav
+        class="bg-white/90 backdrop-blur sticky top-0 z-50 border-b border-[var(--line)] px-6 py-4 flex justify-between items-center">
+        <div class="flex items-center space-x-3">
+            <span class="text-2xl">👨‍🏫</span>
+            <h1 class="font-display text-lg font-semibold text-[var(--maroon)] tracking-wide">Faculty Portal Workspace:
                 <?php echo htmlspecialchars($_SESSION['name']); ?>
             </h1>
         </div>
         <a href="index.php"
-            class="bg-red-500 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-600 transition shadow">Logout</a>
+            class="bg-[var(--maroon)] px-5 py-2.5 rounded-lg text-sm font-semibold text-white tracking-wide hover:bg-[var(--maroon-deep)] transition">Logout</a>
     </nav>
 
     <div class="max-w-7xl mx-auto mt-8 px-4">
 
         <?php if ($message): ?>
             <div
-                class="mb-6 text-sm font-semibold text-emerald-800 bg-emerald-50 p-4 rounded-xl border border-emerald-100 shadow-xs">
+                class="mb-6 text-base font-semibold text-emerald-800 bg-emerald-50 p-5 rounded-xl border border-emerald-200 shadow-xs">
                 <?php echo $message; ?>
             </div>
         <?php endif; ?>
 
         <div class="mb-6">
-            <h2 class="text-xl font-black text-slate-900">Academic Curriculum Control Panel</h2>
-            <p class="text-xs text-slate-400">আপনার অ্যাসাইন করা কোর্সগুলোর সেমিস্টার এবং স্টুডেন্টদের তালিকা আলাদা
-                সেকশনে নিচে দেওয়া হলো।</p>
+            <h2 class="font-display text-2xl font-semibold text-[var(--ink)]">Academic Curriculum Control Panel</h2>
+            <p class="text-sm text-[var(--ink-soft)] mt-1">Your assigned courses are listed below, each with its own
+                semester details and student roster.</p>
         </div>
 
         <div class="space-y-10 mb-16">
             <?php
             if (empty($courses_array)) {
-                echo "<p class='text-xs text-slate-400 italic bg-white p-8 rounded-2xl border border-dashed text-center shadow-xs'>No active courses mapped to your teacher profile grid matrix yet.</p>";
+                echo "<p class='text-sm text-[var(--ink-soft)] italic bg-white p-8 rounded-2xl border border-dashed border-[var(--line)] text-center shadow-xs'>No active courses mapped to your teacher profile grid matrix yet.</p>";
             }
 
             foreach ($courses_array as $course) {
                 $c_id = $course['id'];
                 $c_sem = $course['semester'];
 
-                // ১. কুয়েরি: এনরোল করা আসল স্টুডেন্টদের ফিল্টার করা
+                // 1. Query: filter for actually enrolled students
                 $course_students = $conn->query("
                     SELECT u.id, u.name, u.email, u.id_no 
                     FROM users u
@@ -166,7 +214,7 @@ if ($my_courses_query) {
                     ORDER BY u.id_no ASC
                 ");
 
-                // ২. কুয়েরি: কুইজ/অ্যাসাইনমেন্ট সাবমিশন ডাটা
+                // 2. Query: quiz/assignment submission data
                 $course_submissions = $conn->query("
                     SELECT q.*, o.title AS test_title, o.test_type 
                     FROM quiz_submissions q 
@@ -175,11 +223,11 @@ if ($my_courses_query) {
                     ORDER BY q.id DESC
                 ");
 
-                // ৩. কুয়েরি: কোনো লাইভ সেশন অ্যাক্টিভ আছে কিনা চেক করা
+                // 3. Query: check whether a live session is currently active
                 $check_live = $conn->query("SELECT id, title, test_type FROM online_class_tests WHERE course_id = '$c_id' AND status = 'LIVE NOW' LIMIT 1");
                 $live_session = ($check_live && $check_live->num_rows > 0) ? $check_live->fetch_assoc() : null;
 
-                // ৪. কুয়েরি: অ্যাটেনডেন্স প্রেজেন্ট ডাটা
+                // 4. Query: attendance-present data
                 $attendance_students = $conn->query("
                     SELECT u.name, u.id_no, ar.present_days
                     FROM users u
@@ -188,7 +236,7 @@ if ($my_courses_query) {
                     ORDER BY ar.present_days DESC
                 ");
 
-                // ৫. কুয়েরি: সম্পন্ন হওয়া (completed) পুরনো MCQ টেস্টগুলো - এগুলো PDF এক্সপোর্ট ও ডিলিটের জন্য আর্কাইভ
+                // 5. Query: completed (older) MCQ tests — archived here for PDF export and deletion
                 $old_mcqs = $conn->query("
                     SELECT id, title, correct_option 
                     FROM online_class_tests 
@@ -196,7 +244,7 @@ if ($my_courses_query) {
                     ORDER BY id DESC
                 ");
 
-                // ৬. কুয়েরি: এই কোর্সের সব PDF অ্যাসাইনমেন্ট (ডেডলাইনসহ) - সাবমিশন ট্র্যাকারের জন্য
+                // 6. Query: every PDF assignment for this course (with deadline) — for the submission tracker
                 $course_assignments = $conn->query("
                     SELECT id, title, deadline, status 
                     FROM online_class_tests 
@@ -210,7 +258,7 @@ if ($my_courses_query) {
                     }
                 }
 
-                // ৭. কুয়েরি: প্রতিটি অ্যাসাইনমেন্টের বিপরীতে কারা কারা জমা দিয়েছে
+                // 7. Query: who has submitted against each assignment
                 $assignment_subs_query = $conn->query("
                     SELECT q.ct_id, q.student_id, q.student_name, q.pdf_submission 
                     FROM quiz_submissions q
@@ -230,20 +278,20 @@ if ($my_courses_query) {
                 $total_attendance = ($attendance_students) ? $attendance_students->num_rows : 0;
                 $total_old_mcqs = ($old_mcqs) ? $old_mcqs->num_rows : 0;
                 ?>
-                <div class="bg-white border border-slate-200 rounded-3xl shadow-xs overflow-hidden">
+                <div class="bg-white border border-[var(--line)] rounded-3xl shadow-xs overflow-hidden">
 
-                    <div class="bg-slate-900 text-white px-6 py-4 flex flex-wrap justify-between items-center">
+                    <div class="bg-[var(--maroon)] text-white px-6 py-5 flex flex-wrap justify-between items-center">
                         <div>
                             <span
-                                class="bg-indigo-600 text-white font-mono text-[9px] font-black uppercase px-2 py-0.5 rounded-md tracking-wider">Semester
+                                class="bg-[var(--gold-soft)] text-[var(--maroon-deep)] font-data text-xs font-black uppercase px-2.5 py-1 rounded-md tracking-wider">Semester
                                 <?php echo $c_sem; ?> Core</span>
-                            <h3 class="text-sm font-black tracking-wide mt-1">📚
+                            <h3 class="font-display text-lg font-semibold tracking-wide mt-2">📚
                                 <?php echo htmlspecialchars($course['course_code']); ?> :
                                 <?php echo htmlspecialchars($course['title']); ?>
                             </h3>
                         </div>
                         <span
-                            class="bg-white/10 text-indigo-200 text-xs font-bold px-3 py-1 rounded-xl border border-white/10 mt-2 sm:mt-0">
+                            class="bg-white/10 text-[var(--gold-soft)] text-sm font-semibold px-3.5 py-1.5 rounded-xl border border-white/10 mt-2 sm:mt-0">
                             Total: <?php echo $total_students; ?> Students Enrolled
                         </span>
                     </div>
@@ -253,38 +301,39 @@ if ($my_courses_query) {
                         <div class="space-y-4">
 
                             <div
-                                class="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden transition-all duration-300 shadow-xs">
+                                class="bg-[var(--paper-dim-60)] border border-[var(--line)] rounded-2xl overflow-hidden transition-all duration-300 shadow-xs">
                                 <button
                                     onclick="toggleSection('enrolled-content-<?php echo $c_id; ?>', 'arrow-enrolled-<?php echo $c_id; ?>')"
-                                    class="w-full p-4 flex justify-between items-center text-left focus:outline-hidden cursor-pointer hover:bg-slate-100/80 transition-colors">
+                                    class="w-full p-4 flex justify-between items-center text-left focus:outline-hidden cursor-pointer hover:bg-[var(--paper-dim)] transition-colors">
                                     <div>
                                         <h4
-                                            class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                                            class="text-sm font-bold text-[var(--ink)] uppercase tracking-wider flex items-center gap-1.5">
                                             🎓 Enrolled Roster
                                             <span
-                                                class="bg-slate-600 text-white font-mono text-[10px] px-1.5 py-0.5 rounded-full font-black"><?php echo $total_students; ?></span>
+                                                class="bg-[var(--maroon)] text-white font-data text-xs px-2 py-0.5 rounded-full font-black"><?php echo $total_students; ?></span>
                                         </h4>
-                                        <p class="text-[10px] text-slate-400 mt-0.5">সব এনরোল করা স্টুডেন্টদের লিস্ট</p>
+                                        <p class="text-xs text-[var(--ink-soft)] mt-1">Full list of enrolled students</p>
                                     </div>
                                     <span id="arrow-enrolled-<?php echo $c_id; ?>"
-                                        class="text-slate-500 transition-transform duration-300 transform">▼</span>
+                                        class="text-[var(--ink-soft)] transition-transform duration-300 transform">▼</span>
                                 </button>
 
                                 <div id="enrolled-content-<?php echo $c_id; ?>"
-                                    class="hidden px-4 pb-4 border-t border-slate-200 bg-white/50 pt-3 max-h-[200px] overflow-y-auto space-y-2">
+                                    class="hidden px-4 pb-4 border-t border-[var(--line)] bg-white/50 pt-3 max-h-[220px] overflow-y-auto space-y-2">
                                     <?php if ($total_students > 0) {
                                         mysqli_data_seek($course_students, 0);
                                         while ($st = $course_students->fetch_assoc()) { ?>
                                             <div
-                                                class="p-2 bg-white border border-slate-100 rounded-xl flex justify-between items-center shadow-2xs">
+                                                class="p-2.5 bg-white border border-[var(--line)] rounded-xl flex justify-between items-center shadow-2xs">
                                                 <span
-                                                    class="font-semibold text-slate-700 text-xs"><?php echo htmlspecialchars($st['name']); ?></span>
+                                                    class="font-semibold text-[var(--ink)] text-sm"><?php echo htmlspecialchars($st['name']); ?></span>
                                                 <span
-                                                    class="font-mono text-[10px] text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded"><?php echo htmlspecialchars($st['id_no']); ?></span>
+                                                    class="font-data text-xs text-[var(--maroon)] bg-[#faf3e2] px-2 py-0.5 rounded"><?php echo htmlspecialchars($st['id_no']); ?></span>
                                             </div>
                                         <?php }
                                     } else { ?>
-                                        <p class="text-[11px] text-slate-400 italic text-center py-2">No students active.</p>
+                                        <p class="text-sm text-[var(--ink-soft)] italic text-center py-2">No students active.
+                                        </p>
                                     <?php } ?>
                                 </div>
                             </div>
@@ -296,42 +345,42 @@ if ($my_courses_query) {
                                     class="w-full p-4 flex justify-between items-center text-left focus:outline-hidden cursor-pointer hover:bg-emerald-50 transition-colors">
                                     <div>
                                         <h4
-                                            class="text-xs font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
+                                            class="text-sm font-bold text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
                                             📝 Attendance Log Roll
                                             <span
-                                                class="bg-emerald-600 text-white font-mono text-[10px] px-1.5 py-0.5 rounded-full font-black"><?php echo $total_attendance; ?></span>
+                                                class="bg-emerald-600 text-white font-data text-xs px-2 py-0.5 rounded-full font-black"><?php echo $total_attendance; ?></span>
                                         </h4>
-                                        <p class="text-[10px] text-slate-400 mt-0.5">উপস্থিত ছাত্রদের তালিকা</p>
+                                        <p class="text-xs text-[var(--ink-soft)] mt-1">List of present students</p>
                                     </div>
                                     <span id="arrow-att-<?php echo $c_id; ?>"
                                         class="text-emerald-600 transition-transform duration-300 transform">▼</span>
                                 </button>
 
                                 <div id="attendance-content-<?php echo $c_id; ?>"
-                                    class="hidden px-4 pb-4 border-t border-emerald-100 bg-white/50 pt-3 max-h-[200px] overflow-y-auto space-y-2">
+                                    class="hidden px-4 pb-4 border-t border-emerald-100 bg-white/50 pt-3 max-h-[220px] overflow-y-auto space-y-2">
                                     <?php if ($total_attendance > 0) {
                                         mysqli_data_seek($attendance_students, 0);
                                         while ($att = $attendance_students->fetch_assoc()) { ?>
                                             <div
-                                                class="p-2.5 bg-white border border-emerald-100 rounded-xl flex justify-between items-center text-xs shadow-2xs">
+                                                class="p-3 bg-white border border-emerald-100 rounded-xl flex justify-between items-center text-sm shadow-2xs">
                                                 <div>
-                                                    <p class="font-bold text-slate-800 text-[11px]">
+                                                    <p class="font-bold text-[var(--ink)] text-sm">
                                                         <?php echo htmlspecialchars($att['name']); ?>
                                                     </p>
-                                                    <p class="text-[9px] text-slate-400">ID:
+                                                    <p class="text-xs text-[var(--ink-soft)]">ID:
                                                         <?php echo htmlspecialchars($att['id_no']); ?>
                                                     </p>
                                                 </div>
                                                 <span
-                                                    class="bg-emerald-100 text-emerald-800 font-mono font-bold text-[10px] px-2 py-0.5 rounded-md border border-emerald-200">
+                                                    class="bg-emerald-100 text-emerald-800 font-data font-bold text-xs px-2.5 py-1 rounded-md border border-emerald-200">
                                                     <?php echo $att['present_days']; ?> Days
                                                 </span>
                                             </div>
                                         <?php }
                                     } else { ?>
                                         <p
-                                            class="text-[11px] text-slate-400 italic py-3 text-center bg-white rounded-xl border border-dashed border-emerald-200">
-                                            আজকের ক্লাসে এখনও কেউ টোকেন সাবমিট করেনি।</p>
+                                            class="text-sm text-[var(--ink-soft)] italic py-3 text-center bg-white rounded-xl border border-dashed border-emerald-200">
+                                            No students have submitted a token for today's class yet.</p>
                                     <?php } ?>
                                 </div>
                             </div>
@@ -343,13 +392,13 @@ if ($my_courses_query) {
                                     class="w-full p-4 flex justify-between items-center text-left focus:outline-hidden cursor-pointer hover:bg-amber-50 transition-colors">
                                     <div>
                                         <h4
-                                            class="text-xs font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
+                                            class="text-sm font-bold text-amber-700 uppercase tracking-wider flex items-center gap-1.5">
                                             🗄️ Previous MCQ Archive
                                             <span id="archive-count-<?php echo $c_id; ?>"
-                                                class="bg-amber-600 text-white font-mono text-[10px] px-1.5 py-0.5 rounded-full font-black"><?php echo $total_old_mcqs; ?></span>
+                                                class="bg-amber-600 text-white font-data text-xs px-2 py-0.5 rounded-full font-black"><?php echo $total_old_mcqs; ?></span>
                                         </h4>
-                                        <p class="text-[10px] text-slate-400 mt-0.5">পুরনো MCQ গুলো PDF করে সেভ করুন,
-                                            তারপর ডিলিট করুন</p>
+                                        <p class="text-xs text-[var(--ink-soft)] mt-1">Save old MCQs as a PDF, then
+                                            delete them</p>
                                     </div>
                                     <span id="arrow-archive-<?php echo $c_id; ?>"
                                         class="text-amber-600 transition-transform duration-300 transform">▼</span>
@@ -358,23 +407,23 @@ if ($my_courses_query) {
                                 <div id="archive-content-<?php echo $c_id; ?>"
                                     class="hidden px-4 pb-4 border-t border-amber-100 bg-white/50 pt-3 space-y-2">
                                     <?php if ($total_old_mcqs > 0): ?>
-                                        <p class="text-[11px] text-slate-500 mb-1">
-                                            <?php echo $total_old_mcqs; ?>টি সম্পন্ন MCQ পাওয়া গেছে। প্রথমে PDF
-                                            ডাউনলোড করুন — এরপর নিচের ডিলিট বাটন সক্রিয় হবে।
+                                        <p class="text-sm text-[var(--ink-soft)] mb-1">
+                                            <?php echo $total_old_mcqs; ?> completed MCQ(s) found. Download the
+                                            PDF first — the delete button below will then unlock.
                                         </p>
                                         <a href="generate_mcq_pdf.php?course_id=<?php echo $c_id; ?>" target="_blank"
                                             onclick="enableMcqDelete(<?php echo $c_id; ?>)"
-                                            class="block text-center bg-amber-600 text-white font-bold py-2 rounded-xl text-xs hover:bg-amber-700 transition shadow-xs cursor-pointer">
+                                            class="block text-center bg-amber-600 text-white font-bold py-2.5 rounded-xl text-sm hover:bg-amber-700 transition shadow-xs cursor-pointer">
                                             📥 Download PDF (Question + Correct Answer)
                                         </a>
                                         <button id="delete-mcq-btn-<?php echo $c_id; ?>"
                                             onclick="deleteOldMcqs(<?php echo $c_id; ?>)" disabled
-                                            class="w-full bg-slate-300 text-slate-500 font-bold py-2 rounded-xl text-xs cursor-not-allowed transition shadow-xs">
-                                            🗑️ Delete Old MCQs (আগে PDF ডাউনলোড করুন)
+                                            class="w-full bg-slate-300 text-slate-500 font-bold py-2.5 rounded-xl text-sm cursor-not-allowed transition shadow-xs">
+                                            🗑️ Delete Old MCQs (download PDF first)
                                         </button>
                                     <?php else: ?>
-                                        <p class="text-[11px] text-slate-400 italic text-center py-2">কোনো পুরনো MCQ
-                                            নেই।</p>
+                                        <p class="text-sm text-[var(--ink-soft)] italic text-center py-2">No archived MCQs
+                                            yet.</p>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -383,67 +432,68 @@ if ($my_courses_query) {
                         <div class="lg:col-span-2 space-y-4">
 
                             <div id="live-status-box-<?php echo $c_id; ?>"
-                                class="p-4 rounded-2xl border transition-all duration-300 <?php echo $live_session ? 'bg-rose-50/80 border-rose-200 shadow-xs' : 'bg-slate-50 border-slate-200'; ?>">
+                                class="p-5 rounded-2xl border transition-all duration-300 <?php echo $live_session ? 'bg-rose-50/80 border-rose-200 shadow-xs' : 'bg-[var(--paper-dim-60)] border-[var(--line)]'; ?>">
                                 <div class="flex flex-wrap justify-between items-center mb-1">
-                                    <h5 class="text-xs font-bold text-slate-700 uppercase tracking-wide">📡 Transmission
+                                    <h5 class="text-sm font-bold text-[var(--ink)] uppercase tracking-wide">📡 Transmission
                                         Status</h5>
                                     <span id="status-badge-<?php echo $c_id; ?>"
-                                        class="text-[9px] font-mono font-black px-2 py-0.5 rounded-md <?php echo $live_session ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-300 text-slate-600'; ?>">
+                                        class="text-xs font-data font-black px-2.5 py-1 rounded-md <?php echo $live_session ? 'bg-rose-600 text-white animate-pulse' : 'bg-slate-300 text-slate-600'; ?>">
                                         <?php echo $live_session ? 'LIVE NOW (' . strtoupper($live_session['test_type']) . ')' : 'OFFLINE'; ?>
                                     </span>
                                 </div>
                                 <div id="live-details-<?php echo $c_id; ?>"
                                     class="<?php echo $live_session ? '' : 'hidden'; ?>">
-                                    <p class="text-xs text-slate-700 font-semibold mt-1">Current Topic: <span
-                                            class="text-rose-600 font-mono"
+                                    <p class="text-sm text-[var(--ink)] font-semibold mt-1.5">Current Topic: <span
+                                            class="text-rose-600 font-data"
                                             id="live-title-text-<?php echo $c_id; ?>"><?php echo $live_session ? htmlspecialchars($live_session['title']) : ''; ?></span>
                                     </p>
                                     <button onclick="stopLiveSession(<?php echo $c_id; ?>)"
-                                        class="mt-2 bg-rose-600 hover:bg-rose-700 text-white font-bold py-1 px-3 rounded-lg text-[11px] transition shadow-xs cursor-pointer">End
+                                        class="mt-3 bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-4 rounded-lg text-xs transition shadow-xs cursor-pointer">End
                                         Live Session 🛑</button>
                                 </div>
                                 <p id="offline-placeholder-<?php echo $c_id; ?>"
-                                    class="text-[11px] text-slate-400 italic <?php echo $live_session ? 'hidden' : ''; ?>">
+                                    class="text-sm text-[var(--ink-soft)] italic <?php echo $live_session ? 'hidden' : ''; ?>">
                                     No active live transmission generated for this course node.</p>
                             </div>
 
                             <div
-                                class="bg-slate-100 p-1 rounded-xl flex flex-wrap sm:flex-nowrap gap-1 border border-slate-200">
+                                class="bg-[var(--paper-dim)] p-1.5 rounded-xl flex flex-wrap sm:flex-nowrap gap-1 border border-[var(--line)]">
                                 <button onclick="switchTab(<?php echo $c_id; ?>, 'meet')"
                                     id="tab-btn-meet-<?php echo $c_id; ?>"
-                                    class="flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all cursor-pointer bg-slate-900 text-white shadow-xs">🟢
+                                    class="flex-1 text-center py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer bg-[var(--maroon)] text-white shadow-xs">🟢
                                     Live Meet</button>
                                 <button onclick="switchTab(<?php echo $c_id; ?>, 'mcq')"
                                     id="tab-btn-mcq-<?php echo $c_id; ?>"
-                                    class="flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all cursor-pointer text-slate-500 hover:text-slate-800">⚡
+                                    class="flex-1 text-center py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer text-[var(--ink-soft)] hover:text-[var(--ink)]">⚡
                                     Instant MCQ</button>
                                 <button onclick="switchTab(<?php echo $c_id; ?>, 'pdf')"
                                     id="tab-btn-pdf-<?php echo $c_id; ?>"
-                                    class="flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all cursor-pointer text-slate-500 hover:text-slate-800">📄
+                                    class="flex-1 text-center py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer text-[var(--ink-soft)] hover:text-[var(--ink)]">📄
                                     PDF Task</button>
                                 <button onclick="switchTab(<?php echo $c_id; ?>, 'note')"
                                     id="tab-btn-note-<?php echo $c_id; ?>"
-                                    class="flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all cursor-pointer text-slate-500 hover:text-slate-800">📚
+                                    class="flex-1 text-center py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer text-[var(--ink-soft)] hover:text-[var(--ink)]">📚
                                     Lecture Note</button>
                             </div>
 
-                            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
+                            <div class="bg-white border border-[var(--line)] rounded-2xl p-6 shadow-xs">
 
                                 <div id="tab-content-meet-<?php echo $c_id; ?>"
                                     class="tab-panel-<?php echo $c_id; ?> space-y-3">
                                     <div class="mb-2">
-                                        <h5 class="text-xs font-black text-slate-800 uppercase tracking-wide">🟢 Launch Live
+                                        <h5 class="text-sm font-black text-[var(--ink)] uppercase tracking-wide">🟢 Launch
+                                            Live
                                             Lecture Session</h5>
                                     </div>
                                     <form method="POST" action="" class="grid grid-cols-1 md:grid-cols-2 gap-3">
                                         <input type="hidden" name="course_id" value="<?php echo $c_id; ?>">
                                         <input type="text" name="title" placeholder="Topic: e.g., Agile Architecture"
                                             required
-                                            class="border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 p-2.5 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                            class="border border-[var(--line)] focus:border-[var(--maroon)] focus:ring-2 focus:ring-[var(--gold-25)] p-3 rounded-xl text-sm bg-white transition-all outline-hidden">
                                         <input type="url" name="meet_url" placeholder="Google Meet Link URL..." required
-                                            class="border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 p-2.5 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                            class="border border-[var(--line)] focus:border-[var(--maroon)] focus:ring-2 focus:ring-[var(--gold-25)] p-3 rounded-xl text-sm bg-white transition-all outline-hidden">
                                         <button type="submit" name="launch_meet"
-                                            class="md:col-span-2 bg-indigo-600 text-white font-bold py-2.5 rounded-xl text-xs hover:bg-indigo-700 transition shadow-sm cursor-pointer">Generate
+                                            class="md:col-span-2 bg-[var(--maroon)] text-white font-bold py-3 rounded-xl text-sm hover:bg-[var(--maroon-deep)] transition shadow-sm cursor-pointer">Generate
                                             Token & Broadcast Class</button>
                                     </form>
                                 </div>
@@ -451,33 +501,33 @@ if ($my_courses_query) {
                                 <div id="tab-content-mcq-<?php echo $c_id; ?>"
                                     class="tab-panel-<?php echo $c_id; ?> hidden space-y-3">
                                     <div class="mb-2">
-                                        <h5 class="text-xs font-black text-slate-800 uppercase tracking-wide">⚡ Launch
+                                        <h5 class="text-sm font-black text-[var(--ink)] uppercase tracking-wide">⚡ Launch
                                             Instant MCQ Test Node</h5>
                                     </div>
                                     <form method="POST" action="" class="space-y-3">
                                         <input type="hidden" name="course_id" value="<?php echo $c_id; ?>">
                                         <input type="text" name="mcq_question"
                                             placeholder="Core MCQ Exam Question Statement..." required
-                                            class="w-full border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-2.5 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                            class="w-full border border-[var(--line)] focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-3 rounded-xl text-sm bg-white transition-all outline-hidden">
 
                                         <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                                             <input type="text" name="op_a" placeholder="Option A" required
-                                                class="border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-2 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                                class="border border-[var(--line)] focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-2.5 rounded-xl text-sm bg-white transition-all outline-hidden">
                                             <input type="text" name="op_b" placeholder="Option B" required
-                                                class="border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-2 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                                class="border border-[var(--line)] focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-2.5 rounded-xl text-sm bg-white transition-all outline-hidden">
                                             <input type="text" name="op_c" placeholder="Option C" required
-                                                class="border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-2 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                                class="border border-[var(--line)] focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-2.5 rounded-xl text-sm bg-white transition-all outline-hidden">
                                             <input type="text" name="op_d" placeholder="Option D" required
-                                                class="border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-2 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                                class="border border-[var(--line)] focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-2.5 rounded-xl text-sm bg-white transition-all outline-hidden">
                                         </div>
 
                                         <div
-                                            class="flex items-center gap-2 bg-blue-50/50 p-2 rounded-xl border border-blue-100">
+                                            class="flex items-center gap-2 bg-blue-50/50 p-3 rounded-xl border border-blue-100">
                                             <label
-                                                class="text-[11px] font-bold text-blue-700 uppercase tracking-wider pl-1">Select
+                                                class="text-xs font-bold text-blue-700 uppercase tracking-wider pl-1">Select
                                                 Correct Answer:</label>
                                             <select name="correct_option" required
-                                                class="flex-1 border border-slate-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-1.5 rounded-lg text-xs bg-white font-bold text-slate-700 outline-hidden">
+                                                class="flex-1 border border-[var(--line)] focus:border-blue-500 focus:ring-2 focus:ring-blue-100 p-2 rounded-lg text-sm bg-white font-bold text-[var(--ink)] outline-hidden">
                                                 <option value="" disabled selected>Choose correct option...</option>
                                                 <option value="A">Option A</option>
                                                 <option value="B">Option B</option>
@@ -487,7 +537,7 @@ if ($my_courses_query) {
                                         </div>
 
                                         <button type="submit" name="launch_mcq"
-                                            class="w-full bg-blue-600 text-white font-bold py-2.5 rounded-xl text-xs hover:bg-blue-700 transition shadow-sm cursor-pointer">Deploy
+                                            class="w-full bg-blue-600 text-white font-bold py-3 rounded-xl text-sm hover:bg-blue-700 transition shadow-sm cursor-pointer">Deploy
                                             Live MCQ</button>
                                     </form>
                                 </div>
@@ -495,25 +545,26 @@ if ($my_courses_query) {
                                 <div id="tab-content-pdf-<?php echo $c_id; ?>"
                                     class="tab-panel-<?php echo $c_id; ?> hidden space-y-3">
                                     <div class="mb-2">
-                                        <h5 class="text-xs font-black text-slate-800 uppercase tracking-wide">📄 Launch PDF
+                                        <h5 class="text-sm font-black text-[var(--ink)] uppercase tracking-wide">📄 Launch
+                                            PDF
                                             Assignment Node</h5>
                                     </div>
                                     <form method="POST" enctype="multipart/form-data" action="" class="space-y-3">
                                         <input type="hidden" name="course_id" value="<?php echo $c_id; ?>">
                                         <input type="text" name="pdf_title"
                                             placeholder="Assignment Title (e.g., Mid Term Written Exam)" required
-                                            class="w-full border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 p-2.5 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                            class="w-full border border-[var(--line)] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 p-3 rounded-xl text-sm bg-white transition-all outline-hidden">
                                         <div>
                                             <label
-                                                class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1">Submission
+                                                class="text-xs font-bold text-[var(--ink-soft)] uppercase tracking-wide block mb-1.5">Submission
                                                 Deadline</label>
                                             <input type="datetime-local" name="deadline" required
-                                                class="w-full border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 p-2.5 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                                class="w-full border border-[var(--line)] focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 p-3 rounded-xl text-sm bg-white transition-all outline-hidden">
                                         </div>
                                         <input type="file" name="question_file" accept="application/pdf" required
-                                            class="text-xs text-slate-500 block w-full file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 file:cursor-pointer">
+                                            class="text-sm text-[var(--ink-soft)] block w-full file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-[var(--paper-dim)] file:text-[var(--ink)] hover:file:bg-[var(--paper-dim-60)] file:cursor-pointer">
                                         <button type="submit" name="launch_pdf"
-                                            class="w-full bg-emerald-600 text-white font-bold py-2.5 rounded-xl text-xs hover:bg-emerald-700 transition shadow-sm cursor-pointer">Deploy
+                                            class="w-full bg-emerald-600 text-white font-bold py-3 rounded-xl text-sm hover:bg-emerald-700 transition shadow-sm cursor-pointer">Deploy
                                             PDF Question</button>
                                     </form>
                                 </div>
@@ -521,7 +572,7 @@ if ($my_courses_query) {
                                 <div id="tab-content-note-<?php echo $c_id; ?>"
                                     class="tab-panel-<?php echo $c_id; ?> hidden space-y-3">
                                     <div class="mb-2">
-                                        <h5 class="text-xs font-black text-slate-800 uppercase tracking-wide">📚 Quick
+                                        <h5 class="text-sm font-black text-[var(--ink)] uppercase tracking-wide">📚 Quick
                                             Share: Class Lecture Note</h5>
                                     </div>
                                     <form method="POST" enctype="multipart/form-data" action=""
@@ -529,27 +580,27 @@ if ($my_courses_query) {
                                         <input type="hidden" name="course_id" value="<?php echo $c_id; ?>">
                                         <input type="text" name="note_title"
                                             placeholder="Lecture Title: e.g., Chapter 03 Handnote" required
-                                            class="border border-slate-200 focus:border-purple-500 focus:ring-2 focus:ring-purple-100 p-2.5 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                            class="border border-[var(--line)] focus:border-purple-500 focus:ring-2 focus:ring-purple-100 p-3 rounded-xl text-sm bg-white transition-all outline-hidden">
                                         <input type="file" name="note_file" accept=".pdf,.docx,.doc,.png,.jpg,.jpeg"
                                             required
-                                            class="text-xs text-slate-500 block w-full self-center file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 file:cursor-pointer">
+                                            class="text-sm text-[var(--ink-soft)] block w-full self-center file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-[var(--paper-dim)] file:text-[var(--ink)] hover:file:bg-[var(--paper-dim-60)] file:cursor-pointer">
                                         <button type="submit" name="upload_note"
-                                            class="md:col-span-2 bg-purple-600 text-white font-bold py-2.5 rounded-xl text-xs hover:bg-purple-700 transition shadow-sm cursor-pointer">Upload
+                                            class="md:col-span-2 bg-purple-600 text-white font-bold py-3 rounded-xl text-sm hover:bg-purple-700 transition shadow-sm cursor-pointer">Upload
                                             Note & Broadcast to Nodes 🚀</button>
                                     </form>
                                 </div>
 
                             </div>
 
-                            <div class="p-4 bg-white border border-slate-200 rounded-2xl">
-                                <h5 class="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">🗂️ Assignment
+                            <div class="p-5 bg-white border border-[var(--line)] rounded-2xl">
+                                <h5 class="text-sm font-bold text-[var(--ink)] mb-2 uppercase tracking-wide">🗂️ Assignment
                                     Submission Tracker</h5>
-                                <p class="text-[10px] text-slate-400 mb-2">একটি অ্যাসাইনমেন্ট বেছে নিন — কারা জমা দিয়েছে
-                                    আর কারা এখনও দেয়নি তা দেখুন।</p>
+                                <p class="text-xs text-[var(--ink-soft)] mb-3">Choose an assignment to see who has
+                                    submitted and who hasn't yet.</p>
 
                                 <?php if (!empty($assignments_array)): ?>
                                     <select onchange="showAssignmentSubs(<?php echo $c_id; ?>, this.value)"
-                                        class="w-full border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 p-2 rounded-xl text-xs bg-white transition-all outline-hidden mb-3">
+                                        class="w-full border border-[var(--line)] focus:border-[var(--maroon)] focus:ring-2 focus:ring-[var(--gold-25)] p-2.5 rounded-xl text-sm bg-white transition-all outline-hidden mb-3">
                                         <option value="">-- Select Assignment --</option>
                                         <?php foreach ($assignments_array as $a):
                                             $sub_count = isset($assignment_submissions[$a['id']]) ? count($assignment_submissions[$a['id']]) : 0;
@@ -583,93 +634,93 @@ if ($my_courses_query) {
                                             class="assignment-subs-panel-<?php echo $c_id; ?> hidden space-y-3">
 
                                             <div
-                                                class="flex justify-between items-center text-[10px] font-bold uppercase tracking-wide px-1">
+                                                class="flex justify-between items-center text-xs font-bold uppercase tracking-wide px-1">
                                                 <span class="<?php echo $is_overdue ? 'text-rose-600' : 'text-emerald-600'; ?>">
                                                     <?php echo $is_overdue ? '⏰ Deadline Passed' : '🟢 Accepting Submissions'; ?>
                                                 </span>
-                                                <span class="text-slate-400">
+                                                <span class="text-[var(--ink-soft)]">
                                                     Deadline:
                                                     <?php echo !empty($a['deadline']) ? date("d M Y, h:i A", strtotime($a['deadline'])) : 'N/A'; ?>
                                                 </span>
                                             </div>
 
                                             <div>
-                                                <p class="text-[10px] font-bold text-emerald-700 uppercase mb-1">✅
+                                                <p class="text-xs font-bold text-emerald-700 uppercase mb-1.5">✅
                                                     Submitted
                                                     (<?php echo count($submitted_list); ?>)</p>
-                                                <div class="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                                                <div class="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
                                                     <?php if (!empty($submitted_list)): ?>
                                                         <?php foreach ($submitted_list as $sub): ?>
                                                             <div
-                                                                class="p-2 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between text-xs">
+                                                                class="p-2.5 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between text-sm">
                                                                 <span
-                                                                    class="font-bold text-slate-800 text-[11px]"><?php echo htmlspecialchars($sub['student_name']); ?></span>
+                                                                    class="font-bold text-[var(--ink)] text-sm"><?php echo htmlspecialchars($sub['student_name']); ?></span>
                                                                 <a href="<?php echo htmlspecialchars($sub['pdf_submission']); ?>"
                                                                     target="_blank"
-                                                                    class="text-[10px] text-blue-600 font-bold hover:underline">View
+                                                                    class="text-xs text-blue-600 font-bold hover:underline">View
                                                                     PDF</a>
                                                             </div>
                                                         <?php endforeach; ?>
                                                     <?php else: ?>
-                                                        <p class="text-[11px] text-slate-400 italic text-center py-2">এখনও
-                                                            কেউ জমা দেয়নি।</p>
+                                                        <p class="text-sm text-[var(--ink-soft)] italic text-center py-2">No
+                                                            one has submitted yet.</p>
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
 
                                             <div>
-                                                <p class="text-[10px] font-bold text-rose-600 uppercase mb-1">❌ Not
+                                                <p class="text-xs font-bold text-rose-600 uppercase mb-1.5">❌ Not
                                                     Submitted
                                                     (<?php echo count($not_submitted); ?>)</p>
-                                                <div class="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                                                <div class="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
                                                     <?php if (!empty($not_submitted)): ?>
                                                         <?php foreach ($not_submitted as $st): ?>
                                                             <div
-                                                                class="p-2 bg-rose-50 border border-rose-100 rounded-xl flex items-center justify-between text-xs">
+                                                                class="p-2.5 bg-rose-50 border border-rose-100 rounded-xl flex items-center justify-between text-sm">
                                                                 <span
-                                                                    class="font-bold text-slate-800 text-[11px]"><?php echo htmlspecialchars($st['name']); ?></span>
+                                                                    class="font-bold text-[var(--ink)] text-sm"><?php echo htmlspecialchars($st['name']); ?></span>
                                                                 <span
-                                                                    class="font-mono text-[10px] text-rose-500"><?php echo htmlspecialchars($st['id_no']); ?></span>
+                                                                    class="font-data text-xs text-rose-500"><?php echo htmlspecialchars($st['id_no']); ?></span>
                                                             </div>
                                                         <?php endforeach; ?>
                                                     <?php else: ?>
-                                                        <p class="text-[11px] text-slate-400 italic text-center py-2">সবাই
-                                                            জমা দিয়ে দিয়েছে! 🎉</p>
+                                                        <p class="text-sm text-[var(--ink-soft)] italic text-center py-2">
+                                                            Everyone has submitted! 🎉</p>
                                                     <?php endif; ?>
                                                 </div>
                                             </div>
                                         </div>
                                     <?php endforeach; ?>
                                 <?php else: ?>
-                                    <p class="text-[11px] text-slate-400 italic text-center py-2">এখনও কোনো PDF
-                                        অ্যাসাইনমেন্ট ডিপ্লয় করা হয়নি।</p>
+                                    <p class="text-sm text-[var(--ink-soft)] italic text-center py-2">No PDF assignments
+                                        have been deployed yet.</p>
                                 <?php endif; ?>
                             </div>
 
-                            <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
-                                <h5 class="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">📥 Received
+                            <div class="p-5 bg-[var(--paper-dim-60)] border border-[var(--line)] rounded-2xl">
+                                <h5 class="text-sm font-bold text-[var(--ink)] mb-2 uppercase tracking-wide">📥 Received
                                     Answers Log</h5>
-                                <div class="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                                <div class="space-y-1.5 max-h-[150px] overflow-y-auto pr-1">
                                     <?php if ($total_submissions > 0) {
                                         mysqli_data_seek($course_submissions, 0);
                                         while ($sub = $course_submissions->fetch_assoc()) { ?>
                                             <div
-                                                class="p-2 bg-white border border-slate-200 rounded-xl flex items-center justify-between text-xs shadow-2xs">
+                                                class="p-2.5 bg-white border border-[var(--line)] rounded-xl flex items-center justify-between text-sm shadow-2xs">
                                                 <div>
-                                                    <p class="font-bold text-slate-800 text-[11px]">
+                                                    <p class="font-bold text-[var(--ink)] text-sm">
                                                         <?php echo htmlspecialchars($sub['student_name']); ?>
                                                     </p>
                                                     <span
-                                                        class="text-[9px] text-indigo-600 font-bold uppercase tracking-wider"><?php echo htmlspecialchars($sub['test_type']); ?></span>
+                                                        class="text-xs text-[var(--maroon)] font-bold uppercase tracking-wider"><?php echo htmlspecialchars($sub['test_type']); ?></span>
                                                 </div>
                                                 <div
-                                                    class="font-mono text-[10px] text-slate-500 bg-slate-50 border px-2 py-0.5 rounded-md max-w-[180px] truncate">
+                                                    class="font-data text-xs text-[var(--ink-soft)] bg-[var(--paper-dim-60)] border border-[var(--line)] px-2.5 py-1 rounded-md max-w-[180px] truncate">
                                                     <?php echo !empty($sub['pdf_submission']) ? "<a href='" . htmlspecialchars($sub['pdf_submission']) . "' target='_blank' class='text-blue-600 font-bold hover:underline'>View PDF</a>" : htmlspecialchars($sub['answers']); ?>
                                                 </div>
                                             </div>
                                         <?php }
                                     } else { ?>
-                                        <p class="text-[11px] text-slate-400 italic text-center py-2">No submission scripts
+                                        <p class="text-sm text-[var(--ink-soft)] italic text-center py-2">No submission scripts
                                             cached yet.</p>
                                     <?php } ?>
                                 </div>
@@ -683,7 +734,7 @@ if ($my_courses_query) {
     </div>
 
     <script>
-        // ১. লাইভ সেশন এন্ড করার AJAX মেকানিজম
+        // 1. AJAX mechanism to end a live session
         async function stopLiveSession(courseId) {
             if (!confirm("Are you sure you want to end this live session?")) return;
 
@@ -705,12 +756,12 @@ if ($my_courses_query) {
 
                     if (statusBadge) {
                         statusBadge.innerText = 'OFFLINE';
-                        statusBadge.className = "text-[9px] font-mono font-black px-2 py-0.5 rounded-md bg-slate-300 text-slate-600";
+                        statusBadge.className = "text-xs font-data font-black px-2.5 py-1 rounded-md bg-slate-300 text-slate-600";
                     }
                     if (liveDetails) liveDetails.classList.add('hidden');
                     if (placeholder) placeholder.classList.remove('hidden');
                     if (statusBox) {
-                        statusBox.className = "p-4 rounded-2xl border transition-all duration-300 bg-slate-50 border-slate-200";
+                        statusBox.className = "p-5 rounded-2xl border transition-all duration-300 bg-[var(--paper-dim-60)] border-[var(--line)]";
                     }
                 } else {
                     alert("Error: " + result.message);
@@ -721,7 +772,7 @@ if ($my_courses_query) {
             }
         }
 
-        // ২. ট্যাব সুইচিং কোড লজিক
+        // 2. Tab switching logic
         function switchTab(courseId, tabName) {
             const panels = document.querySelectorAll(`.tab-panel-${courseId}`);
             panels.forEach(panel => panel.classList.add('hidden'));
@@ -733,17 +784,17 @@ if ($my_courses_query) {
             tabButtons.forEach(btn => {
                 const btnEl = document.getElementById(`tab-btn-${btn}-${courseId}`);
                 if (btnEl) {
-                    btnEl.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all cursor-pointer text-slate-500 hover:text-slate-800";
+                    btnEl.className = "flex-1 text-center py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer text-[var(--ink-soft)] hover:text-[var(--ink)]";
                 }
             });
 
             const activeBtn = document.getElementById(`tab-btn-${tabName}-${courseId}`);
             if (activeBtn) {
-                activeBtn.className = "flex-1 text-center py-2 text-xs font-bold rounded-lg transition-all cursor-pointer bg-slate-900 text-white shadow-sm";
+                activeBtn.className = "flex-1 text-center py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer bg-[var(--maroon)] text-white shadow-sm";
             }
         }
 
-        // ৪. PDF ডাউনলোড করলে Delete বাটন সক্রিয় (enable) হবে - দুই ধাপের নিরাপদ ডিলিট ফ্লো
+        // 3. Enables the Delete button only after the archive PDF has been downloaded — a safe two-step delete flow
         function enableMcqDelete(courseId) {
             const btn = document.getElementById(`delete-mcq-btn-${courseId}`);
             if (btn) {
@@ -754,9 +805,9 @@ if ($my_courses_query) {
             }
         }
 
-        // ৫. পুরনো MCQ ডিলিট করার AJAX মেকানিজম (শুধু PDF ডাউনলোড হওয়ার পরই সক্রিয় হয়)
+        // 4. AJAX mechanism to delete old MCQs (only enabled once the PDF has been downloaded)
         async function deleteOldMcqs(courseId) {
-            if (!confirm("PDF ডাউনলোড নিশ্চিত হওয়ার পরই এই কোর্সের সব পুরনো MCQ স্থায়ীভাবে ডিলিট হয়ে যাবে। আপনি কি নিশ্চিত?")) return;
+            if (!confirm("Once you confirm, every archived MCQ for this course will be permanently deleted. Are you sure?")) return;
 
             const formData = new FormData();
             formData.append('course_id', courseId);
@@ -773,7 +824,7 @@ if ($my_courses_query) {
                     const archiveContent = document.getElementById(`archive-content-${courseId}`);
                     if (archiveCount) archiveCount.innerText = '0';
                     if (archiveContent) {
-                        archiveContent.innerHTML = `<p class="text-[11px] text-slate-400 italic text-center py-2">কোনো পুরনো MCQ নেই।</p>`;
+                        archiveContent.innerHTML = `<p class="text-sm text-[var(--ink-soft)] italic text-center py-2">No archived MCQs yet.</p>`;
                     }
                 } else {
                     alert("Error: " + result.message);
@@ -784,7 +835,7 @@ if ($my_courses_query) {
             }
         }
 
-        // ৬. জেনারালাইজড সেকশন টগল মেকানিজম (Enrolled, Attendance ও Archive - সবার জন্য একই ফাংশন)
+        // 5. Generalized section toggle mechanism (used by Enrolled, Attendance and Archive alike)
         function toggleSection(contentId, arrowId) {
             const content = document.getElementById(contentId);
             const arrow = document.getElementById(arrowId);
@@ -797,7 +848,7 @@ if ($my_courses_query) {
                 arrow.style.transform = "rotate(0deg)";
             }
         }
-        // ৭. অ্যাসাইনমেন্ট ড্রপডাউন থেকে বেছে নেওয়া নির্দিষ্ট অ্যাসাইনমেন্টের সাবমিশন লিস্ট দেখানো
+        // 6. Shows the submission list for whichever assignment is selected in the dropdown
         function showAssignmentSubs(courseId, ctId) {
             document.querySelectorAll(`.assignment-subs-panel-${courseId}`).forEach(p => p.classList.add('hidden'));
             if (ctId) {

@@ -42,7 +42,7 @@ if (isset($_POST['login'])) {
     $stmt->close();
 }
 
-// 🎯 ডাটাবেজ থেকে এই মুহূর্তের সকল 'LIVE NOW' ক্লাস তুলে আনা (কোনো লিমিট ছাড়া)
+// Fetch all currently 'LIVE NOW' classes from the database (no limit)
 $live_class_query = "SELECT t.*, c.course_code, c.title AS course_title 
                      FROM online_class_tests t 
                      JOIN courses c ON t.course_id = c.id 
@@ -66,15 +66,17 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
         rel="stylesheet">
     <style>
         :root {
-            --color-du-maroon: #73001a;
+            --color-du-maroon: #7A0A21;
             --color-du-maroon-dark: #4c0011;
-            --color-du-maroon-light: #8f0021;
-            --color-du-gold: #c9a227;
-            --color-du-gold-soft: #f4ecd2;
+            --color-du-maroon-light: #9A1230;
+            --color-du-gold: #B8862E;
+            --color-du-gold-bright: #D9A94A;
+            --color-du-gold-soft: #F7EFDC;
         }
 
         html {
             font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+            font-size: 17px;
         }
 
         .font-display {
@@ -124,45 +126,174 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
         .rise-in-2 {
             animation-delay: 0.15s;
         }
+
+        /* Navbar */
+        #site-nav {
+            transition: box-shadow 0.35s ease, padding 0.35s ease, background-color 0.35s ease;
+        }
+
+        #site-nav.nav-scrolled {
+            box-shadow: 0 8px 30px -12px rgba(122, 10, 33, 0.18);
+            padding-top: 0.65rem;
+            padding-bottom: 0.65rem;
+        }
+
+        .nav-logo-badge {
+            transition: transform 0.45s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+        }
+
+        #site-nav:hover .nav-logo-badge,
+        .nav-logo-badge:hover {
+            transform: rotate(-8deg) scale(1.08);
+            box-shadow: 0 6px 16px -4px rgba(122, 10, 33, 0.45);
+        }
+
+        .nav-link {
+            position: relative;
+            padding-bottom: 4px;
+        }
+
+        .nav-link::after {
+            content: "";
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 100%;
+            height: 2px;
+            background: linear-gradient(90deg, var(--color-du-maroon), var(--color-du-gold));
+            border-radius: 2px;
+            transform: scaleX(0);
+            transform-origin: right;
+            transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .nav-link:hover::after,
+        .nav-link.active-link::after {
+            transform: scaleX(1);
+            transform-origin: left;
+        }
+
+        .nav-link.active-link {
+            color: var(--color-du-maroon);
+        }
+
+        .nav-cta {
+            position: relative;
+            overflow: hidden;
+        }
+
+        .nav-cta::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: -75%;
+            width: 50%;
+            height: 100%;
+            background: linear-gradient(120deg, transparent, rgba(255, 255, 255, 0.35), transparent);
+            transform: skewX(-20deg);
+            transition: left 0.6s ease;
+        }
+
+        .nav-cta:hover::before {
+            left: 125%;
+        }
+
+        /* Mobile menu */
+        #mobile-menu {
+            max-height: 0;
+            overflow: hidden;
+            opacity: 0;
+            transition: max-height 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        }
+
+        #mobile-menu.open {
+            max-height: 20rem;
+            opacity: 1;
+        }
+
+        #hamburger-icon span {
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            transform-origin: center;
+        }
+
+        #hamburger-icon.open span:nth-child(1) {
+            transform: translateY(7px) rotate(45deg);
+        }
+
+        #hamburger-icon.open span:nth-child(2) {
+            opacity: 0;
+        }
+
+        #hamburger-icon.open span:nth-child(3) {
+            transform: translateY(-7px) rotate(-45deg);
+        }
     </style>
 </head>
 
-<body class="bg-[#fbfaf8] font-sans text-stone-800 antialiased">
+<body class="bg-[#FAF7F1] font-sans text-stone-800 antialiased">
 
-    <nav
-        class="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-stone-200/80 px-6 py-3.5 flex justify-between items-center">
-        <div class="flex items-center space-x-3">
-            <span
-                class="text-xl w-10 h-10 flex items-center justify-center bg-gradient-to-br from-[#73001a] to-[#4c0011] rounded-xl text-white shadow-sm">🎓</span>
-            <div class="flex flex-col leading-none">
-                <span class="font-display text-lg font-semibold text-stone-900 tracking-tight">Virtual Varsity</span>
+    <nav id="site-nav" class="bg-white/95 backdrop-blur-md sticky top-0 z-50 border-b border-stone-200/80 px-6 py-4">
+        <div class="flex justify-between items-center">
+            <a href="#hero" class="flex items-center space-x-3 focus-ring rounded-lg">
                 <span
-                    class="text-[10px] uppercase tracking-[0.18em] text-[color:var(--color-du-gold)] font-bold mt-0.5">Academic
-                    Platform</span>
+                    class="nav-logo-badge text-2xl w-11 h-11 flex items-center justify-center bg-gradient-to-br from-[color:var(--color-du-maroon)] to-[color:var(--color-du-maroon-dark)] rounded-xl text-white shadow-sm">🎓</span>
+                <div class="flex flex-col leading-none">
+                    <span class="font-display text-xl font-semibold text-stone-900 tracking-tight">Varsity
+                        Nexus</span>
+                    <span
+                        class="text-xs uppercase tracking-[0.18em] text-[color:var(--color-du-gold)] font-bold mt-1">Unified
+                        Academic Network</span>
+                </div>
+            </a>
+
+            <div class="hidden md:flex items-center space-x-9 text-base font-semibold text-stone-600">
+                <a href="#hero" data-nav-link class="nav-link active-link focus-ring rounded">Home</a>
+                <a href="#curriculum" data-nav-link class="nav-link focus-ring rounded">Syllabus Explorer</a>
+                <a href="#login-portal" data-nav-link class="nav-link focus-ring rounded">LMS Portals</a>
+            </div>
+
+            <div class="flex items-center space-x-3">
+                <a href="#login-portal"
+                    class="nav-cta hidden sm:inline-flex bg-[color:var(--color-du-maroon)] text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-[color:var(--color-du-maroon-dark)] transition-all duration-200 focus-ring">Access
+                    Portals</a>
+
+                <button id="hamburger-btn" type="button" onclick="toggleMobileMenu()" aria-expanded="false"
+                    aria-controls="mobile-menu" aria-label="Toggle navigation menu"
+                    class="md:hidden w-10 h-10 flex flex-col items-center justify-center gap-[5px] rounded-lg border border-stone-200 focus-ring">
+                    <span id="hamburger-icon" class="flex flex-col items-center gap-[5px] w-5">
+                        <span class="block w-5 h-0.5 bg-stone-700 rounded-full"></span>
+                        <span class="block w-5 h-0.5 bg-stone-700 rounded-full"></span>
+                        <span class="block w-5 h-0.5 bg-stone-700 rounded-full"></span>
+                    </span>
+                </button>
             </div>
         </div>
-        <div class="hidden md:flex space-x-8 text-sm font-semibold text-stone-600">
-            <a href="#hero" class="hover:text-[#73001a] transition-colors duration-200 focus-ring rounded">Home</a>
-            <a href="#curriculum"
-                class="hover:text-[#73001a] transition-colors duration-200 focus-ring rounded">Syllabus Explorer</a>
-            <a href="#login-portal" class="hover:text-[#73001a] transition-colors duration-200 focus-ring rounded">LMS
+
+        <div id="mobile-menu" class="md:hidden mt-4 flex flex-col space-y-1 text-base font-semibold text-stone-600">
+            <a href="#hero" onclick="closeMobileMenu()"
+                class="px-3 py-3 rounded-xl hover:bg-stone-50 hover:text-[color:var(--color-du-maroon)] transition-colors">Home</a>
+            <a href="#curriculum" onclick="closeMobileMenu()"
+                class="px-3 py-3 rounded-xl hover:bg-stone-50 hover:text-[color:var(--color-du-maroon)] transition-colors">Syllabus
+                Explorer</a>
+            <a href="#login-portal" onclick="closeMobileMenu()"
+                class="px-3 py-3 rounded-xl hover:bg-stone-50 hover:text-[color:var(--color-du-maroon)] transition-colors">LMS
+                Portals</a>
+            <a href="#login-portal" onclick="closeMobileMenu()"
+                class="mt-2 text-center bg-[color:var(--color-du-maroon)] text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-[color:var(--color-du-maroon-dark)] transition-all">Access
                 Portals</a>
         </div>
-        <a href="#login-portal"
-            class="bg-[#73001a] text-white px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-[#4c0011] transition-all duration-200 focus-ring">Access
-            Portals</a>
     </nav>
 
     <section id="hero"
         class="max-w-6xl mx-auto px-6 py-16 md:py-24 grid grid-cols-1 md:grid-cols-2 gap-14 items-center">
         <div class="rise-in rise-in-1">
             <span
-                class="bg-[color:var(--color-du-gold-soft)] text-[#73001a] font-bold tracking-wider text-[11px] px-3 py-1.5 rounded-full uppercase border border-[color:var(--color-du-gold)]/40">Next-Gen
+                class="bg-[color:var(--color-du-gold-soft)] text-[color:var(--color-du-maroon)] font-bold tracking-wider text-xs px-3.5 py-2 rounded-full uppercase border border-[color:var(--color-du-gold)]/40">Next-Gen
                 Academic Infrastructure</span>
             <h1
-                class="font-display text-4xl md:text-[3.25rem] font-semibold tracking-tight text-stone-900 mt-5 leading-[1.08]">
+                class="font-display text-5xl md:text-6xl font-semibold tracking-tight text-stone-900 mt-6 leading-[1.08]">
                 Empowering Education Through
-                <span class="text-[#73001a] relative inline-block">
+                <span class="text-[color:var(--color-du-maroon)] relative inline-block">
                     Live Virtualization
                     <svg class="absolute left-0 -bottom-1 w-full" height="8" viewBox="0 0 200 8"
                         preserveAspectRatio="none" aria-hidden="true">
@@ -171,24 +302,24 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
                     </svg>
                 </span>
             </h1>
-            <p class="text-stone-500 mt-6 text-base leading-relaxed max-w-md">
+            <p class="text-stone-500 mt-7 text-lg leading-relaxed max-w-md">
                 An integrated Learning Management System for live class attendance, instant online assessments, and
                 structured course maps — built for one campus, end to end.
             </p>
-            <div class="mt-9 flex items-center space-x-4">
+            <div class="mt-10 flex items-center space-x-4">
                 <a href="#login-portal"
-                    class="bg-stone-900 text-white px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-stone-800 transition shadow-md hover:shadow-lg focus-ring">Launch
+                    class="bg-stone-900 text-white px-7 py-4 rounded-xl font-bold text-base hover:bg-stone-800 transition shadow-md hover:shadow-lg focus-ring">Launch
                     Gateways</a>
                 <a href="#curriculum"
-                    class="bg-white border border-stone-200 text-stone-700 px-6 py-3.5 rounded-xl font-bold text-sm hover:bg-stone-50 transition focus-ring">View
+                    class="bg-white border border-stone-200 text-stone-700 px-7 py-4 rounded-xl font-bold text-base hover:bg-stone-50 transition focus-ring">View
                     Syllabus</a>
             </div>
         </div>
 
         <div
-            class="rise-in rise-in-2 grain-card bg-gradient-to-br from-[#73001a] via-[#5c0016] to-stone-950 rounded-3xl p-8 text-white shadow-xl flex flex-col justify-between min-h-[22rem] max-h-[28rem] relative overflow-hidden group border border-white/10">
+            class="rise-in rise-in-2 grain-card bg-gradient-to-br from-[color:var(--color-du-maroon)] via-[#5c0016] to-stone-950 rounded-3xl p-8 text-white shadow-xl flex flex-col justify-between min-h-[22rem] max-h-[28rem] relative overflow-hidden group border border-white/10">
             <div
-                class="absolute -right-10 -bottom-10 w-44 h-44 bg-[color:var(--color-du-gold)]/15 rounded-full blur-2xl">
+                class="absolute -right-10 -bottom-10 w-44 h-44 bg-[color:var(--color-du-gold)]/20 rounded-full blur-2xl">
             </div>
 
             <div class="relative z-10 w-full flex flex-col h-full">
@@ -197,14 +328,14 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
                         <span class="text-xl w-9 h-9 flex items-center justify-center bg-white/10 rounded-xl">🚀</span>
                         <div>
                             <h3
-                                class="font-display text-sm font-semibold text-[color:var(--color-du-gold-soft)] leading-none">
+                                class="font-display text-base font-semibold text-[color:var(--color-du-gold-soft)] leading-none">
                                 Live Virtualization Node</h3>
-                            <p class="text-[10px] text-stone-300 tracking-wider uppercase mt-1">Real-time Dashboard
+                            <p class="text-xs text-stone-300 tracking-wider uppercase mt-1.5">Real-time Dashboard
                                 Monitoring</p>
                         </div>
                     </div>
                     <span
-                        class="bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold px-2.5 py-1 rounded-md border border-emerald-500/20 flex items-center gap-1.5">
+                        class="bg-emerald-500/10 text-emerald-400 font-mono text-xs font-bold px-2.5 py-1 rounded-md border border-emerald-500/20 flex items-center gap-1.5">
                         <span class="flex h-1.5 w-1.5 relative">
                             <span
                                 class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
@@ -221,16 +352,16 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <span
-                                            class="text-[10px] font-mono bg-[color:var(--color-du-gold)]/20 text-[color:var(--color-du-gold-soft)] px-2 py-0.5 rounded font-bold">
+                                            class="text-xs font-mono bg-[color:var(--color-du-gold)]/20 text-[color:var(--color-du-gold-soft)] px-2 py-0.5 rounded font-bold">
                                             <?php echo htmlspecialchars($live_class['course_code']); ?>
                                         </span>
-                                        <h4 class="font-display text-sm font-medium mt-1.5 text-white tracking-tight">
+                                        <h4 class="font-display text-base font-medium mt-1.5 text-white tracking-tight">
                                             <?php echo htmlspecialchars($live_class['course_title']); ?>
                                         </h4>
                                     </div>
                                     <div class="text-right">
                                         <span
-                                            class="bg-red-500/20 text-red-400 font-mono text-[9px] font-bold px-2 py-0.5 rounded border border-red-500/20 animate-pulse">
+                                            class="bg-red-500/20 text-red-400 font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/20 animate-pulse">
                                             ● LIVE NOW
                                         </span>
                                     </div>
@@ -245,7 +376,7 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
                                     <div
                                         class="flex items-center space-x-1.5 bg-black/30 px-2.5 py-1 rounded-lg border border-white/5 shrink-0">
                                         <span>⏱️</span>
-                                        <span class="font-mono text-xs text-emerald-400 font-bold run-timer">35:00</span>
+                                        <span class="font-mono text-sm text-emerald-400 font-bold run-timer">35:00</span>
                                     </div>
                                 </div>
                             </div>
@@ -253,18 +384,18 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
                     <?php else: ?>
                         <div class="bg-white/5 p-6 rounded-xl border border-white/5 backdrop-blur-md text-center py-10">
                             <span class="text-2xl block mb-2">📡</span>
-                            <h4 class="text-sm font-medium text-stone-300">No active lectures detected</h4>
-                            <p class="text-[11px] text-stone-500 mt-1">System is waiting for real-time faculty streams.</p>
+                            <h4 class="text-base font-medium text-stone-300">No active lectures detected</h4>
+                            <p class="text-xs text-stone-500 mt-1.5">System is waiting for real-time faculty streams.</p>
                         </div>
                     <?php endif; ?>
                 </div>
             </div>
 
             <div
-                class="bg-white/5 p-3 rounded-xl backdrop-blur-md border border-white/10 text-[11px] flex justify-between items-center z-10 w-full mt-4 shrink-0">
+                class="bg-white/5 p-3.5 rounded-xl backdrop-blur-md border border-white/10 text-xs flex justify-between items-center z-10 w-full mt-4 shrink-0">
                 <span class="font-medium text-stone-200">Active Live Nodes: <span id="node-status-text"
                         class="font-bold text-white"><?php echo $total_live_classes; ?> Active</span></span>
-                <span class="text-xs text-[color:var(--color-du-gold)] font-mono font-bold">SYNC_OK</span>
+                <span class="text-xs text-[color:var(--color-du-gold-bright)] font-mono font-bold">SYNC_OK</span>
             </div>
         </div>
     </section>
@@ -272,14 +403,14 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
     <section id="login-portal" class="bg-stone-100/70 py-16 md:py-20 border-t border-b border-stone-200">
         <div class="max-w-lg mx-auto px-6">
             <div class="bg-white p-8 rounded-3xl shadow-xl border border-stone-200/80 rise-in rise-in-1">
-                <h2 class="font-display text-2xl font-semibold text-center text-stone-900 mb-1">Secure Management
+                <h2 class="font-display text-3xl font-semibold text-center text-stone-900 mb-2">Secure Management
                     Gateway</h2>
-                <p class="text-center text-stone-400 text-xs mb-7">Select your appropriate destination portal layer
+                <p class="text-center text-stone-400 text-sm mb-8">Select your appropriate destination portal layer
                     below</p>
 
                 <?php if ($error): ?>
                     <div role="alert"
-                        class="text-red-700 text-xs bg-red-50 p-3 rounded-xl mb-5 text-center font-medium border border-red-200 flex items-center justify-center space-x-2">
+                        class="text-red-700 text-sm bg-red-50 p-3.5 rounded-xl mb-5 text-center font-medium border border-red-200 flex items-center justify-center space-x-2">
                         <span>⚠️</span> <span><?php echo htmlspecialchars($error); ?></span>
                     </div>
                 <?php endif; ?>
@@ -287,55 +418,55 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
                 <form method="POST" action="" novalidate>
                     <input type="hidden" name="role_selection" id="role_selection" value="student">
 
-                    <fieldset class="mb-6">
+                    <fieldset class="mb-7">
                         <legend
-                            class="block text-stone-500 text-xs font-bold uppercase tracking-wider mb-3 text-center w-full">
+                            class="block text-stone-500 text-sm font-bold uppercase tracking-wider mb-3 text-center w-full">
                             Select Account Access Layer</legend>
                         <div class="grid grid-cols-3 gap-2 bg-stone-100 p-1.5 rounded-2xl" role="tablist"
                             aria-label="Portal role">
                             <button type="button" id="tab-student" onclick="selectRole('student')" role="tab"
                                 aria-selected="true"
-                                class="flex flex-col items-center justify-center py-3 rounded-xl font-bold text-xs transition-all duration-300 bg-white text-[#73001a] shadow-sm border border-stone-200 focus-ring">
-                                <span class="text-lg mb-1">🎓</span>
+                                class="flex flex-col items-center justify-center py-3.5 rounded-xl font-bold text-sm transition-all duration-300 bg-white text-[color:var(--color-du-maroon)] shadow-sm border border-stone-200 focus-ring">
+                                <span class="text-xl mb-1">🎓</span>
                                 <span>Student</span>
                             </button>
                             <button type="button" id="tab-teacher" onclick="selectRole('teacher')" role="tab"
                                 aria-selected="false"
-                                class="flex flex-col items-center justify-center py-3 rounded-xl font-bold text-xs transition-all duration-300 text-stone-600 hover:bg-white/70 focus-ring">
-                                <span class="text-lg mb-1">👨‍🏫</span>
+                                class="flex flex-col items-center justify-center py-3.5 rounded-xl font-bold text-sm transition-all duration-300 text-stone-600 hover:bg-white/70 focus-ring">
+                                <span class="text-xl mb-1">👨‍🏫</span>
                                 <span>Faculty</span>
                             </button>
                             <button type="button" id="tab-admin" onclick="selectRole('admin')" role="tab"
                                 aria-selected="false"
-                                class="flex flex-col items-center justify-center py-3 rounded-xl font-bold text-xs transition-all duration-300 text-stone-600 hover:bg-white/70 focus-ring">
-                                <span class="text-lg mb-1">⚙️</span>
+                                class="flex flex-col items-center justify-center py-3.5 rounded-xl font-bold text-sm transition-all duration-300 text-stone-600 hover:bg-white/70 focus-ring">
+                                <span class="text-xl mb-1">⚙️</span>
                                 <span>Admin</span>
                             </button>
                         </div>
                     </fieldset>
 
-                    <div class="mb-4">
-                        <label class="block text-stone-500 text-xs font-bold uppercase tracking-wider mb-1.5">Email
+                    <div class="mb-5">
+                        <label class="block text-stone-500 text-sm font-bold uppercase tracking-wider mb-2">Email
                             Address</label>
                         <input type="email" name="email" required placeholder="name@domain.edu"
-                            class="w-full px-4 py-3 border border-stone-300 rounded-xl focus:outline-none focus:border-[#73001a] focus:ring-4 focus:ring-[#73001a]/10 text-sm transition-all duration-200">
+                            class="w-full px-4 py-3.5 border border-stone-300 rounded-xl focus:outline-none focus:border-[color:var(--color-du-maroon)] focus:ring-4 focus:ring-[color:var(--color-du-maroon)]/10 text-base transition-all duration-200">
                     </div>
 
-                    <div class="mb-7">
-                        <label class="block text-stone-500 text-xs font-bold uppercase tracking-wider mb-1.5">Security
+                    <div class="mb-8">
+                        <label class="block text-stone-500 text-sm font-bold uppercase tracking-wider mb-2">Security
                             Password</label>
                         <div class="relative">
                             <input type="password" id="passwordField" name="password" required placeholder="••••••••"
-                                class="w-full px-4 py-3 pr-16 border border-stone-300 rounded-xl focus:outline-none focus:border-[#73001a] focus:ring-4 focus:ring-[#73001a]/10 text-sm transition-all duration-200">
+                                class="w-full px-4 py-3.5 pr-16 border border-stone-300 rounded-xl focus:outline-none focus:border-[color:var(--color-du-maroon)] focus:ring-4 focus:ring-[color:var(--color-du-maroon)]/10 text-base transition-all duration-200">
                             <button type="button" onclick="togglePassword()"
-                                class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-xs font-semibold focus:outline-none focus-ring rounded px-1">
+                                class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-400 hover:text-stone-600 text-sm font-semibold focus:outline-none focus-ring rounded px-1">
                                 <span id="toggleText">Show</span>
                             </button>
                         </div>
                     </div>
 
                     <button type="submit" name="login" id="submit-btn"
-                        class="w-full bg-[#73001a] text-white font-bold py-3.5 px-4 rounded-xl hover:bg-[#4c0011] shadow-md hover:shadow-lg transition-all duration-200 transform active:scale-[0.99] text-sm tracking-wide focus-ring">
+                        class="w-full bg-[color:var(--color-du-maroon)] text-white font-bold py-4 px-4 rounded-xl hover:bg-[color:var(--color-du-maroon-dark)] shadow-md hover:shadow-lg transition-all duration-200 transform active:scale-[0.99] text-base tracking-wide focus-ring">
                         Access Student Portal
                     </button>
                 </form>
@@ -344,43 +475,93 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
     </section>
 
     <section id="curriculum" class="max-w-5xl mx-auto px-6 py-20 md:py-24">
-        <div class="text-center mb-10">
+        <div class="text-center mb-12">
             <span
-                class="bg-[color:var(--color-du-gold-soft)] text-[#73001a] font-bold tracking-wider text-[11px] px-3 py-1.5 rounded-full uppercase border border-[color:var(--color-du-gold)]/40">Academic
+                class="bg-[color:var(--color-du-gold-soft)] text-[color:var(--color-du-maroon)] font-bold tracking-wider text-xs px-3.5 py-2 rounded-full uppercase border border-[color:var(--color-du-gold)]/40">Academic
                 Blueprint</span>
-            <h2 class="font-display text-3xl font-semibold text-stone-900 tracking-tight mt-3">Structured Course
+            <h2 class="font-display text-4xl font-semibold text-stone-900 tracking-tight mt-4">Structured Course
                 Framework</h2>
         </div>
 
         <div
-            class="bg-white rounded-2xl border border-stone-200 p-6 sm:p-8 shadow-xs hover:border-[#73001a]/30 hover:shadow-md transition-all duration-300 flex flex-col sm:flex-row items-center justify-between gap-6">
+            class="bg-white rounded-2xl border border-stone-200 p-6 sm:p-8 shadow-xs hover:border-[color:var(--color-du-maroon)]/30 hover:shadow-md transition-all duration-300 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div class="flex items-center space-x-4 text-center sm:text-left">
                 <div
-                    class="p-4 bg-[color:var(--color-du-gold-soft)] rounded-2xl border border-[color:var(--color-du-gold)]/30 text-2xl">
+                    class="p-4 bg-[color:var(--color-du-gold-soft)] rounded-2xl border border-[color:var(--color-du-gold)]/30 text-3xl">
                     📚</div>
                 <div>
                     <span
-                        class="bg-[color:var(--color-du-gold-soft)] text-[#73001a] font-bold tracking-wider text-[10px] px-2.5 py-1 rounded-full uppercase border border-[color:var(--color-du-gold)]/30">Official
+                        class="bg-[color:var(--color-du-gold-soft)] text-[color:var(--color-du-maroon)] font-bold tracking-wider text-xs px-2.5 py-1 rounded-full uppercase border border-[color:var(--color-du-gold)]/30">Official
                         Curriculum</span>
-                    <h3 class="font-display text-lg font-semibold text-stone-900 tracking-tight mt-1.5">B.Sc. Computer
+                    <h3 class="font-display text-xl font-semibold text-stone-900 tracking-tight mt-2">B.Sc. Computer
                         Science & Engineering Syllabus</h3>
-                    <p class="text-stone-500 text-xs mt-1">Interactive 8-semester academic blueprints — credit counts,
+                    <p class="text-stone-500 text-sm mt-1.5">Interactive 8-semester academic blueprints — credit counts,
                         hours, prerequisites, and full syllabus content maps.</p>
                 </div>
             </div>
             <div class="w-full sm:w-auto text-center">
                 <a href="syllabus.html"
-                    class="inline-block w-full sm:w-auto bg-[#73001a] hover:bg-[#4c0011] text-white text-xs font-bold px-6 py-3.5 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md focus-ring">Open
+                    class="inline-block w-full sm:w-auto bg-[color:var(--color-du-maroon)] hover:bg-[color:var(--color-du-maroon-dark)] text-white text-sm font-bold px-6 py-4 rounded-xl transition-all duration-200 shadow-sm hover:shadow-md focus-ring">Open
                     Syllabus Explorer →</a>
             </div>
         </div>
     </section>
 
-    <footer class="border-t border-stone-200 py-8 text-center text-xs text-stone-400">
+    <footer class="border-t border-stone-200 py-8 text-center text-sm text-stone-400">
         © <?php echo date('Y'); ?> Virtual Varsity — Academic Platform
     </footer>
 
     <script>
+        // Mobile menu toggle
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            const icon = document.getElementById('hamburger-icon');
+            const btn = document.getElementById('hamburger-btn');
+            const isOpen = menu.classList.toggle('open');
+            icon.classList.toggle('open', isOpen);
+            btn.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+
+        function closeMobileMenu() {
+            document.getElementById('mobile-menu').classList.remove('open');
+            document.getElementById('hamburger-icon').classList.remove('open');
+            document.getElementById('hamburger-btn').setAttribute('aria-expanded', 'false');
+        }
+
+        // Navbar shadow + compact padding on scroll
+        (function () {
+            const nav = document.getElementById('site-nav');
+            if (!nav) return;
+            const onScroll = () => {
+                nav.classList.toggle('nav-scrolled', window.scrollY > 12);
+            };
+            window.addEventListener('scroll', onScroll, { passive: true });
+            onScroll();
+        })();
+
+        // Scroll-spy: highlight the nav link for the section in view
+        (function () {
+            const links = document.querySelectorAll('[data-nav-link]');
+            if (!links.length) return;
+            const sections = Array.from(links)
+                .map(link => document.querySelector(link.getAttribute('href')))
+                .filter(Boolean);
+
+            const setActive = (id) => {
+                links.forEach(link => {
+                    link.classList.toggle('active-link', link.getAttribute('href') === `#${id}`);
+                });
+            };
+
+            const observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) setActive(entry.target.id);
+                });
+            }, { rootMargin: '-45% 0px -45% 0px', threshold: 0 });
+
+            sections.forEach(section => observer.observe(section));
+        })();
+
         function selectRole(role) {
             document.getElementById('role_selection').value = role;
             const roles = ['student', 'teacher', 'admin'];
@@ -393,11 +574,11 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
             roles.forEach(r => {
                 const btn = document.getElementById(`tab-${r}`);
                 if (r === role) {
-                    btn.classList.add('bg-white', 'text-[#73001a]', 'shadow-sm', 'border', 'border-stone-200');
+                    btn.classList.add('bg-white', 'text-[color:var(--color-du-maroon)]', 'shadow-sm', 'border', 'border-stone-200');
                     btn.classList.remove('text-stone-600', 'hover:bg-white/70');
                     btn.setAttribute('aria-selected', 'true');
                 } else {
-                    btn.classList.remove('bg-white', 'text-[#73001a]', 'shadow-sm', 'border', 'border-stone-200');
+                    btn.classList.remove('bg-white', 'text-[color:var(--color-du-maroon)]', 'shadow-sm', 'border', 'border-stone-200');
                     btn.classList.add('text-stone-600', 'hover:bg-white/70');
                     btn.setAttribute('aria-selected', 'false');
                 }
@@ -417,47 +598,47 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
             }
         }
 
-        // 🎯 রিয়েল-টাইম ডাটাবেজ সিঙ্কিং মেকানিজম (AJAX Short Polling)
+        // Real-time database sync mechanism (AJAX short polling)
         async function syncLiveClasses() {
             const container = document.getElementById('live-container');
             const nodeStatusText = document.getElementById('node-status-text');
 
-            // যদি পেজে এলিমেন্ট কোনো কারণে মিসিং থাকে, জাভাস্ক্রিপ্ট এরর এড়ানোর প্রটেকশন
+            // Guard clause in case the element is missing from the page, to avoid JS errors
             if (!container) return;
 
             try {
                 const response = await fetch('get_live_classes.php');
                 const liveClasses = await response.json();
 
-                // ১. যদি ডাটাবেজে কোনো লাইভ ক্লাস না থাকে
+                // 1. If there are no live classes in the database
                 if (liveClasses.length === 0) {
                     container.innerHTML = `
                         <div class="bg-white/5 p-6 rounded-xl border border-white/5 backdrop-blur-md text-center py-10">
                             <span class="text-2xl block mb-2">📡</span>
-                            <h4 class="text-sm font-medium text-stone-300">No active lectures detected</h4>
-                            <p class="text-[11px] text-stone-500 mt-1">System is waiting for real-time faculty streams.</p>
+                            <h4 class="text-base font-medium text-stone-300">No active lectures detected</h4>
+                            <p class="text-xs text-stone-500 mt-1.5">System is waiting for real-time faculty streams.</p>
                         </div>
                     `;
                     if (nodeStatusText) nodeStatusText.innerHTML = '0 Active';
                     return;
                 }
 
-                // ২. যদি ডাটাবেজে লাইভ ক্লাস পাওয়া যায় (১০টি ক্লাস একসাথে হলেও লুপে ঘুরবে)
+                // 2. If live classes are found in the database (loops through all, even if there are 10 at once)
                 let cardsHtml = '';
                 liveClasses.forEach(clazz => {
                     cardsHtml += `
                         <div class="bg-white/5 p-4 rounded-xl border border-white/5 backdrop-blur-md">
                             <div class="flex justify-between items-start">
                                 <div>
-                                    <span class="text-[10px] font-mono bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded font-bold">
+                                    <span class="text-xs font-mono bg-amber-500/20 text-amber-200 px-2 py-0.5 rounded font-bold">
                                         ${escapeHtml(clazz.course_code)}
                                     </span>
-                                    <h4 class="font-display text-sm font-medium mt-1.5 text-white tracking-tight">
+                                    <h4 class="font-display text-base font-medium mt-1.5 text-white tracking-tight">
                                         ${escapeHtml(clazz.course_title)}
                                     </h4>
                                 </div>
                                 <div class="text-right">
-                                    <span class="bg-red-500/20 text-red-400 font-mono text-[9px] font-bold px-2 py-0.5 rounded border border-red-500/20 animate-pulse">
+                                    <span class="bg-red-500/20 text-red-400 font-mono text-[10px] font-bold px-2 py-0.5 rounded border border-red-500/20 animate-pulse">
                                         ● LIVE NOW
                                     </span>
                                 </div>
@@ -469,7 +650,7 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
                                 </div>
                                 <div class="flex items-center space-x-1.5 bg-black/30 px-2.5 py-1 rounded-lg border border-white/5 shrink-0">
                                     <span>⏱️</span>
-                                    <span class="font-mono text-xs text-emerald-400 font-bold run-timer">35:00</span>
+                                    <span class="font-mono text-sm text-emerald-400 font-bold run-timer">35:00</span>
                                 </div>
                             </div>
                         </div>
@@ -484,17 +665,17 @@ $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result)
             }
         }
 
-        // XSS ইঞ্জেকশন প্রটেকশন ফাংশন
+        // XSS injection protection function
         function escapeHtml(str) {
             return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
         }
 
-        // ডম লোড হলে লাইভ সিঙ্ক লুপ রান করানো
+        // Run the live sync loop once the DOM has loaded
         document.addEventListener('DOMContentLoaded', () => {
-            // প্রথমবার পেজ লোডেই ডাটা নিয়ে আসবে
+            // Fetch data immediately on first page load
             syncLiveClasses();
 
-            // প্রতি ৫ সেকেন্ড পর পর ব্যাকগ্রাউন্ডে চেক করবে
+            // Poll in the background every 5 seconds
             setInterval(syncLiveClasses, 5000);
         });
     </script>

@@ -41,13 +41,13 @@ if (isset($_POST['submit_response'])) {
     $selected_option = isset($_POST['selected_option']) ? mysqli_real_escape_string($conn, $_POST['selected_option']) : "";
     $ans_text = !empty($selected_option) ? "Selected Option: " . $selected_option : "";
 
-    // ডেডলাইন চেক (শুধু PDF অ্যাসাইনমেন্টের ক্ষেত্রে)
+    // Deadline check (only applies to PDF assignments)
     $ct_check = $conn->query("SELECT test_type, deadline FROM online_class_tests WHERE id='$ct_id' LIMIT 1");
     $ct_row = ($ct_check && $ct_check->num_rows > 0) ? $ct_check->fetch_assoc() : null;
     $deadline_passed = ($ct_row && $ct_row['test_type'] === 'pdf' && !empty($ct_row['deadline']) && strtotime($ct_row['deadline']) < time());
 
     if ($deadline_passed) {
-        $msg = "❌ Deadline is over. This assignment no longer accepts submissions.";
+        $msg = "Deadline is over. This assignment no longer accepts submissions.";
         $msg_type = "error";
     } else {
         $uploaded_pdf_path = "";
@@ -132,7 +132,7 @@ if ($result_query) {
     }
 }
 
-// Live running Class / Tests (শুধু নিজের এনরোল করা কোর্সের মধ্যে, meet/mcq — pdf আলাদা সেকশনে দেখানো হয় নিচে)
+// Live running Class / Tests (only within the student's own enrolled courses, meet/mcq — pdf is shown in a separate section below)
 $live_ct_query = $conn->query("
     SELECT online_class_tests.*, courses.title AS course_title, courses.course_code 
     FROM online_class_tests 
@@ -154,7 +154,7 @@ if ($live_ct && $live_ct['test_type'] == 'mcq') {
     }
 }
 
-// --- ACTIVE PDF ASSIGNMENTS (course-wise, deadline soho, নিজের এনরোল করা কোর্সের সব লাইভ অ্যাসাইনমেন্ট) ---
+// --- ACTIVE PDF ASSIGNMENTS (course-wise, with deadline, all live assignments in the student's enrolled courses) ---
 $assignments_query = $conn->query("
     SELECT oct.*, c.title AS course_title, c.course_code,
         (SELECT pdf_submission FROM quiz_submissions WHERE ct_id = oct.id AND student_id = '$student_id' LIMIT 1) AS my_submission
@@ -241,6 +241,7 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
             font-family: 'Inter', sans-serif;
             background-color: var(--paper);
             color: var(--ink);
+            font-size: 16px;
         }
 
         .font-display {
@@ -258,8 +259,8 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
         .ledger {}
 
         .seal {
-            width: 26px;
-            height: 26px;
+            width: 30px;
+            height: 30px;
             border-radius: 9999px;
             display: inline-flex;
             align-items: center;
@@ -268,7 +269,7 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
             color: var(--gold);
             background: radial-gradient(circle at 30% 30%, #fff9ea, #fbf1d9 70%);
             box-shadow: inset 0 0 0 1px rgba(163, 120, 31, 0.15);
-            font-size: 12px;
+            font-size: 14px;
         }
 
         ::selection {
@@ -285,29 +286,29 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
 <body class="antialiased">
 
     <nav
-        class="bg-white/90 backdrop-blur sticky top-0 z-50 border-b border-[var(--line)] px-6 py-3.5 flex justify-between items-center">
+        class="bg-white/90 backdrop-blur sticky top-0 z-50 border-b border-[var(--line)] px-6 py-4 flex justify-between items-center">
         <div class="flex items-center space-x-3">
-            <svg width="38" height="38" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <svg width="42" height="42" viewBox="0 0 38 38" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M19 2 L35 8 V19 C35 28 28 33.5 19 36 C10 33.5 3 28 3 19 V8 Z" fill="var(--maroon)"
                     stroke="var(--gold)" stroke-width="1" />
                 <text x="19" y="24" text-anchor="middle" font-family="Fraunces, serif" font-size="14" font-weight="600"
                     fill="#f7f4ee">VV</text>
             </svg>
             <div class="flex flex-col leading-none">
-                <span class="font-display text-xl font-semibold text-[var(--maroon)] tracking-tight">Virtual
+                <span class="font-display text-2xl font-semibold text-[var(--maroon)] tracking-tight">Virtual
                     Varsity</span>
-                <span class="text-[9px] uppercase tracking-[0.18em] text-[var(--ink-soft)] font-semibold mt-1">Secure
+                <span class="text-xs uppercase tracking-[0.18em] text-[var(--ink-soft)] font-semibold mt-1">Secure
                     Student Workspace</span>
             </div>
         </div>
         <div class="flex items-center space-x-4">
             <div class="text-right hidden sm:block">
-                <p class="text-sm font-semibold text-[var(--ink)]"><?php echo htmlspecialchars($student_name); ?></p>
-                <p class="text-[10px] text-[var(--ink-soft)] font-data uppercase tracking-wide">ID
+                <p class="text-base font-semibold text-[var(--ink)]"><?php echo htmlspecialchars($student_name); ?></p>
+                <p class="text-xs text-[var(--ink-soft)] font-data uppercase tracking-wide">ID
                     #<?php echo $student_id; ?></p>
             </div>
             <a href="index.php"
-                class="bg-[var(--maroon)] text-white px-4 py-2 rounded-lg text-xs font-semibold tracking-wide hover:bg-[var(--maroon-deep)] transition">Logout</a>
+                class="bg-[var(--maroon)] text-white px-5 py-2.5 rounded-lg text-sm font-semibold tracking-wide hover:bg-[var(--maroon-deep)] transition">Logout</a>
         </div>
     </nav>
 
@@ -317,7 +318,7 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
 
             <?php if ($msg): ?>
                 <div
-                    class="px-4 py-3 rounded-lg font-semibold text-xs border-l-4 flex items-center gap-2 <?php echo ($msg_type === 'success') ? 'bg-emerald-50 border-emerald-500 text-emerald-800' : 'bg-rose-50 border-rose-500 text-rose-800'; ?>">
+                    class="px-5 py-4 rounded-lg font-semibold text-sm border-l-4 flex items-center gap-2 <?php echo ($msg_type === 'success') ? 'bg-emerald-50 border-emerald-500 text-emerald-800' : 'bg-rose-50 border-rose-500 text-rose-800'; ?>">
                     <span><?php echo ($msg_type === 'success') ? '✓' : '✕'; ?></span>
                     <span><?php echo htmlspecialchars($msg); ?></span>
                 </div>
@@ -326,50 +327,49 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
             <?php if ($live_ct) { ?>
                 <!-- Live test section remains identical -->
                 <div
-                    class="bg-gradient-to-br from-[var(--maroon)] via-[var(--maroon-deep)] to-[#1a0a0a] p-6 sm:p-7 rounded-2xl text-white shadow-lg shadow-black/10 border border-[var(--gold-25)] relative overflow-hidden">
+                    class="bg-gradient-to-br from-[var(--maroon)] via-[var(--maroon-deep)] to-[#1a0a0a] p-6 sm:p-8 rounded-2xl text-white shadow-lg shadow-black/10 border border-[var(--gold-25)] relative overflow-hidden">
                     <div class="absolute -right-10 -top-10 w-40 h-40 rounded-full border border-white/5"></div>
                     <span
-                        class="bg-white/10 text-[var(--gold-soft)] font-semibold text-[9px] px-2.5 py-1 rounded-full uppercase tracking-wider inline-flex items-center space-x-1.5 relative">
+                        class="bg-white/10 text-[var(--gold-soft)] font-semibold text-xs px-3 py-1.5 rounded-full uppercase tracking-wider inline-flex items-center space-x-1.5 relative">
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                         <span>Live Session In Progress</span>
                     </span>
-                    <h2 class="font-display text-2xl font-semibold mt-3 text-white relative">
+                    <h2 class="font-display text-3xl font-semibold mt-3 text-white relative">
                         <?php echo htmlspecialchars($live_ct['course_title']); ?>
                     </h2>
-                    <p class="text-xs text-white/50 mb-3 font-data relative">
+                    <p class="text-sm text-white/50 mb-3 font-data relative">
                         <?php echo htmlspecialchars($live_ct['course_code']); ?>
                     </p>
                     <div
-                        class="text-sm font-medium bg-white/[0.06] border border-white/10 p-3.5 rounded-xl mb-5 text-amber-50/90 relative">
+                        class="text-base font-medium bg-white/[0.06] border border-white/10 p-4 rounded-xl mb-5 text-amber-50/90 relative">
                         <span class="text-[var(--gold-soft)] font-semibold">Question —
                         </span><?php echo htmlspecialchars($live_ct['title']); ?>
                     </div>
 
                     <?php if ($live_ct['test_type'] == 'meet') { ?>
-                        <div class="space-y-4 bg-white/[0.06] p-4 rounded-xl border border-white/10 relative">
-                            <div
-                                class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                        <div class="space-y-4 bg-white/[0.06] p-5 rounded-xl border border-white/10 relative">
+                            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/40">
                                 <span
-                                    class="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[9px]">1</span>
+                                    class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[11px]">1</span>
                                 Join the live session
                             </div>
                             <a href="<?php echo htmlspecialchars($live_ct['zoom_link']); ?>" target="_blank"
-                                class="inline-flex bg-white text-[var(--maroon)] font-semibold px-4 py-2.5 rounded-lg text-xs hover:bg-amber-50 transition">Open
+                                class="inline-flex bg-white text-[var(--maroon)] font-semibold px-5 py-3 rounded-lg text-sm hover:bg-amber-50 transition">Open
                                 Google Meet / Zoom →</a>
                             <form method="POST" action="" class="pt-4 border-t border-white/10">
                                 <input type="hidden" name="ct_id" value="<?php echo $live_ct['id']; ?>">
                                 <input type="hidden" name="course_id" value="<?php echo $live_ct['course_id']; ?>">
                                 <label
-                                    class="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-wider mb-2 text-white/40">
+                                    class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider mb-2 text-white/40">
                                     <span
-                                        class="w-4 h-4 rounded-full bg-white/10 flex items-center justify-center text-[9px]">2</span>
+                                        class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[11px]">2</span>
                                     Enter the live token
                                 </label>
                                 <div class="flex space-x-2">
                                     <input type="text" name="token_code" maxlength="4" placeholder="Pin" required
-                                        class="bg-white text-[var(--ink)] px-4 py-2 rounded-lg text-sm font-data font-semibold tracking-[0.3em] w-32 text-center uppercase focus:outline-none focus:ring-2 focus:ring-[var(--gold)]">
+                                        class="bg-white text-[var(--ink)] px-4 py-2.5 rounded-lg text-base font-data font-semibold tracking-[0.3em] w-36 text-center uppercase focus:outline-none focus:ring-2 focus:ring-[var(--gold)]">
                                     <button type="submit" name="verify_token"
-                                        class="bg-emerald-600 text-white text-xs font-semibold px-5 py-2 rounded-lg hover:bg-emerald-500 transition cursor-pointer">Verify
+                                        class="bg-emerald-600 text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-emerald-500 transition cursor-pointer">Verify
                                         Attendance</button>
                                 </div>
                             </form>
@@ -381,11 +381,11 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                             ?>
                             <div class="bg-white/[0.06] border border-white/10 p-5 rounded-xl space-y-4">
                                 <div class="flex items-center justify-between border-b border-white/10 pb-3">
-                                    <span class="text-xs font-semibold uppercase tracking-wider text-white/50">Result</span>
+                                    <span class="text-sm font-semibold uppercase tracking-wider text-white/50">Result</span>
                                     <span
-                                        class="px-3 py-1 rounded-full text-[10px] font-semibold uppercase <?php echo $is_correct ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'; ?>"><?php echo $is_correct ? 'Correct ✓' : 'Incorrect ✗'; ?></span>
+                                        class="px-3.5 py-1.5 rounded-full text-xs font-semibold uppercase <?php echo $is_correct ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'; ?>"><?php echo $is_correct ? 'Correct ✓' : 'Incorrect ✗'; ?></span>
                                 </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                                     <?php
                                     $options = ['A' => 'option_a', 'B' => 'option_b', 'C' => 'option_c', 'D' => 'option_d'];
                                     foreach ($options as $key => $col):
@@ -393,16 +393,16 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                                         $border_badge = "";
                                         if ($key === $correct_ans) {
                                             $bg_class = "bg-emerald-50 border-2 border-emerald-500 text-emerald-900 font-semibold";
-                                            $border_badge = " <span class='ml-auto bg-emerald-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded'>Correct</span>";
+                                            $border_badge = " <span class='ml-auto bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded'>Correct</span>";
                                         } elseif ($key === $submitted_option && !$is_correct) {
                                             $bg_class = "bg-rose-50 border-2 border-rose-400 text-rose-900 font-semibold";
-                                            $border_badge = " <span class='ml-auto bg-rose-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded'>Your Pick</span>";
+                                            $border_badge = " <span class='ml-auto bg-rose-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded'>Your Pick</span>";
                                         } elseif ($key === $submitted_option && $is_correct) {
-                                            $border_badge = " <span class='ml-auto bg-emerald-600 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded'>Your Pick ✓</span>";
+                                            $border_badge = " <span class='ml-auto bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded'>Your Pick ✓</span>";
                                         }
                                         ?>
-                                        <div class="p-3.5 rounded-xl flex items-center shadow-xs <?php echo $bg_class; ?>">
-                                            <span class="font-data text-[var(--ink-soft)] mr-1.5"><?php echo $key; ?></span>
+                                        <div class="p-4 rounded-xl flex items-center shadow-xs <?php echo $bg_class; ?>">
+                                            <span class="font-data text-[var(--ink-soft)] mr-2"><?php echo $key; ?></span>
                                             <span><?php echo htmlspecialchars($live_ct[$col]); ?></span>
                                             <?php echo $border_badge; ?>
                                         </div>
@@ -410,37 +410,37 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                                 </div>
                             </div>
                         <?php else: ?>
-                            <form method="POST" action="" class="bg-white/[0.06] p-4 rounded-xl border border-white/10">
+                            <form method="POST" action="" class="bg-white/[0.06] p-5 rounded-xl border border-white/10">
                                 <input type="hidden" name="ct_id" value="<?php echo $live_ct['id']; ?>">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-2.5 text-xs mb-4 text-[var(--ink)]">
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4 text-[var(--ink)]">
                                     <label
-                                        class="bg-white p-3 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
+                                        class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
                                         <input type="radio" name="selected_option" value="A" required
-                                            class="accent-[var(--maroon)]">
+                                            class="accent-[var(--maroon)] w-4 h-4">
                                         <span><span class="font-data text-[var(--ink-soft)]">A</span>
                                             <?php echo htmlspecialchars($live_ct['option_a']); ?></span>
                                     </label>
                                     <label
-                                        class="bg-white p-3 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
-                                        <input type="radio" name="selected_option" value="B" class="accent-[var(--maroon)]">
+                                        class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
+                                        <input type="radio" name="selected_option" value="B" class="accent-[var(--maroon)] w-4 h-4">
                                         <span><span class="font-data text-[var(--ink-soft)]">B</span>
                                             <?php echo htmlspecialchars($live_ct['option_b']); ?></span>
                                     </label>
                                     <label
-                                        class="bg-white p-3 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
-                                        <input type="radio" name="selected_option" value="C" class="accent-[var(--maroon)]">
+                                        class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
+                                        <input type="radio" name="selected_option" value="C" class="accent-[var(--maroon)] w-4 h-4">
                                         <span><span class="font-data text-[var(--ink-soft)]">C</span>
                                             <?php echo htmlspecialchars($live_ct['option_c']); ?></span>
                                     </label>
                                     <label
-                                        class="bg-white p-3 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
-                                        <input type="radio" name="selected_option" value="D" class="accent-[var(--maroon)]">
+                                        class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
+                                        <input type="radio" name="selected_option" value="D" class="accent-[var(--maroon)] w-4 h-4">
                                         <span><span class="font-data text-[var(--ink-soft)]">D</span>
                                             <?php echo htmlspecialchars($live_ct['option_d']); ?></span>
                                     </label>
                                 </div>
                                 <button type="submit" name="submit_response"
-                                    class="bg-[var(--gold-soft)] text-[var(--maroon-deep)] text-xs font-semibold px-5 py-2.5 rounded-lg hover:brightness-95 transition cursor-pointer">Submit
+                                    class="bg-[var(--gold-soft)] text-[var(--maroon-deep)] text-sm font-semibold px-6 py-3 rounded-lg hover:brightness-95 transition cursor-pointer">Submit
                                     Answer</button>
                             </form>
                         <?php endif; ?>
@@ -449,12 +449,11 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
             <?php } ?>
 
             <!-- PDF Assignments (course-wise, with deadline) -->
-            <div class="bg-white p-6 rounded-2xl border border-[var(--line)] space-y-5">
+            <div class="bg-white p-6 sm:p-7 rounded-2xl border border-[var(--line)] space-y-5">
                 <div>
-                    <h3 class="font-display text-lg font-semibold text-[var(--ink)]">📄 Assignments</h3>
-                    <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">শিক্ষকদের দেওয়া লিখিত অ্যাসাইনমেন্ট —
-                        ডেডলাইনের
-                        মধ্যে PDF জমা দিন।</p>
+                    <h3 class="font-display text-xl font-semibold text-[var(--ink)]">📄 Assignments</h3>
+                    <p class="text-sm text-[var(--ink-soft)] mt-1">Written assignments posted by your instructors —
+                        submit your PDF before the deadline.</p>
                 </div>
 
                 <?php if (!empty($active_assignments)): ?>
@@ -463,39 +462,39 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                             $is_overdue = !empty($asn['deadline']) && strtotime($asn['deadline']) < time();
                             $already_submitted = !empty($asn['my_submission']);
                             ?>
-                            <div class="p-4 rounded-xl border border-[var(--line)] ledger space-y-3">
+                            <div class="p-5 rounded-xl border border-[var(--line)] ledger space-y-3">
                                 <div class="flex items-center justify-between gap-2 flex-wrap">
                                     <div class="flex items-center gap-2">
                                         <span
-                                            class="font-data text-[9px] uppercase font-semibold text-[var(--maroon)] bg-[#faf3e2] px-2 py-0.5 rounded border border-[var(--gold-25)]"><?php echo htmlspecialchars($asn['course_code']); ?></span>
+                                            class="font-data text-[11px] uppercase font-semibold text-[var(--maroon)] bg-[#faf3e2] px-2.5 py-1 rounded border border-[var(--gold-25)]"><?php echo htmlspecialchars($asn['course_code']); ?></span>
                                         <span
-                                            class="text-xs font-semibold text-[var(--ink)]"><?php echo htmlspecialchars($asn['title']); ?></span>
+                                            class="text-sm font-semibold text-[var(--ink)]"><?php echo htmlspecialchars($asn['title']); ?></span>
                                     </div>
                                     <span
-                                        class="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full <?php echo $is_overdue ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'; ?>">
+                                        class="text-[11px] font-bold uppercase px-2.5 py-1 rounded-full <?php echo $is_overdue ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'; ?>">
                                         <?php echo $is_overdue ? '⏰ Deadline Over' : '🟢 Open'; ?>
                                     </span>
                                 </div>
 
-                                <p class="text-[10px] text-[var(--ink-soft)]">Deadline:
+                                <p class="text-xs text-[var(--ink-soft)]">Deadline:
                                     <span class="font-semibold text-[var(--ink)]">
                                         <?php echo !empty($asn['deadline']) ? date("d M Y, h:i A", strtotime($asn['deadline'])) : 'N/A'; ?>
                                     </span>
                                 </p>
 
                                 <a href="<?php echo htmlspecialchars($asn['pdf_question']); ?>" target="_blank"
-                                    class="inline-flex bg-[var(--gold-soft)] text-[var(--maroon-deep)] font-semibold px-4 py-2 rounded-lg text-xs hover:brightness-95 transition">Download
+                                    class="inline-flex bg-[var(--gold-soft)] text-[var(--maroon-deep)] font-semibold px-5 py-2.5 rounded-lg text-sm hover:brightness-95 transition">Download
                                     Question Sheet ↓</a>
 
                                 <?php if ($already_submitted): ?>
                                     <div
-                                        class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-800 flex items-center justify-between">
+                                        class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-sm text-emerald-800 flex items-center justify-between">
                                         <span>✅ Submitted successfully</span>
                                         <a href="<?php echo htmlspecialchars($asn['my_submission']); ?>" target="_blank"
                                             class="font-semibold hover:underline">View my script</a>
                                     </div>
                                 <?php elseif ($is_overdue): ?>
-                                    <div class="bg-rose-50 border border-rose-200 p-3 rounded-xl text-xs text-rose-700">
+                                    <div class="bg-rose-50 border border-rose-200 p-4 rounded-xl text-sm text-rose-700">
                                         ❌ Deadline is over. Submission is no longer accepted.
                                     </div>
                                 <?php else: ?>
@@ -503,12 +502,12 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                                         class="border-t border-[var(--line)] pt-3 space-y-2">
                                         <input type="hidden" name="ct_id" value="<?php echo $asn['id']; ?>">
                                         <label
-                                            class="block text-[10px] uppercase font-semibold tracking-wider text-[var(--ink-soft)]">Upload
+                                            class="block text-xs uppercase font-semibold tracking-wider text-[var(--ink-soft)]">Upload
                                             your script (PDF only)</label>
                                         <input type="file" name="student_pdf" accept="application/pdf" required
-                                            class="text-xs text-[var(--ink-soft)] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[var(--paper-dim-60)] file:text-[var(--ink)]">
+                                            class="text-sm text-[var(--ink-soft)] file:mr-3 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-[var(--paper-dim-60)] file:text-[var(--ink)]">
                                         <button type="submit" name="submit_response"
-                                            class="bg-emerald-600 text-white text-xs font-semibold px-5 py-2 rounded-lg hover:bg-emerald-500 transition cursor-pointer">Submit
+                                            class="bg-emerald-600 text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-emerald-500 transition cursor-pointer">Submit
                                             PDF Script</button>
                                     </form>
                                 <?php endif; ?>
@@ -516,42 +515,42 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                         <?php endforeach; ?>
                     </div>
                 <?php else: ?>
-                    <p class="text-xs text-[var(--ink-soft)] italic text-center py-6 bg-[var(--paper-dim-60)] rounded-xl">
-                        এখনও কোনো অ্যাসাইনমেন্ট দেওয়া হয়নি।</p>
+                    <p class="text-sm text-[var(--ink-soft)] italic text-center py-6 bg-[var(--paper-dim-60)] rounded-xl">
+                        No assignments have been posted yet.</p>
                 <?php endif; ?>
             </div>
 
             <!-- Lecture Notes / Resources -->
-            <div class="bg-white p-6 rounded-2xl border border-[var(--line)] space-y-5">
+            <div class="bg-white p-6 sm:p-7 rounded-2xl border border-[var(--line)] space-y-5">
                 <div>
-                    <h3 class="font-display text-lg font-semibold text-[var(--ink)]">Lecture Notes & Resources</h3>
-                    <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">Course অনুযায়ী শিক্ষকদের শেয়ার করা লেকচার নোট
-                        — যেকোনো সময় ডাউনলোড করুন।</p>
+                    <h3 class="font-display text-xl font-semibold text-[var(--ink)]">Lecture Notes & Resources</h3>
+                    <p class="text-sm text-[var(--ink-soft)] mt-1">Lecture notes shared by your instructors, organized
+                        by course — download anytime.</p>
                 </div>
 
                 <?php if (!empty($lecture_notes_by_course)): ?>
-                    <div class="space-y-5">
+                    <div class="space-y-6">
                         <?php foreach ($lecture_notes_by_course as $course_notes): ?>
                             <div>
-                                <div class="flex items-center gap-2 mb-2">
+                                <div class="flex items-center gap-2 mb-3">
                                     <span
-                                        class="font-data text-[9px] uppercase font-semibold text-[var(--maroon)] bg-[#faf3e2] px-2 py-0.5 rounded border border-[var(--gold-25)]"><?php echo htmlspecialchars($course_notes['course_code']); ?></span>
+                                        class="font-data text-[11px] uppercase font-semibold text-[var(--maroon)] bg-[#faf3e2] px-2.5 py-1 rounded border border-[var(--gold-25)]"><?php echo htmlspecialchars($course_notes['course_code']); ?></span>
                                     <span
-                                        class="text-xs font-semibold text-[var(--ink)]"><?php echo htmlspecialchars($course_notes['course_title']); ?></span>
+                                        class="text-sm font-semibold text-[var(--ink)]"><?php echo htmlspecialchars($course_notes['course_title']); ?></span>
                                 </div>
                                 <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                     <?php foreach ($course_notes['notes'] as $note): ?>
                                         <a href="<?php echo htmlspecialchars($note['pdf_question']); ?>" target="_blank"
-                                            class="flex items-center gap-3 p-3 rounded-xl border border-[var(--line)] ledger hover:border-[var(--gold-40)] transition group">
+                                            class="flex items-center gap-3 p-4 rounded-xl border border-[var(--line)] ledger hover:border-[var(--gold-40)] transition group">
                                             <span
-                                                class="w-9 h-9 rounded-lg bg-[#faf3e2] border border-[var(--gold-25)] flex items-center justify-center text-base shrink-0">📄</span>
+                                                class="w-10 h-10 rounded-lg bg-[#faf3e2] border border-[var(--gold-25)] flex items-center justify-center text-lg shrink-0">📄</span>
                                             <div class="min-w-0">
                                                 <p
-                                                    class="text-xs font-semibold text-[var(--ink)] truncate group-hover:text-[var(--maroon)] transition">
+                                                    class="text-sm font-semibold text-[var(--ink)] truncate group-hover:text-[var(--maroon)] transition">
                                                     <?php echo htmlspecialchars($note['title']); ?>
                                                 </p>
                                                 <span
-                                                    class="text-[9px] text-[var(--ink-soft)] uppercase tracking-wide font-semibold">Download
+                                                    class="text-[11px] text-[var(--ink-soft)] uppercase tracking-wide font-semibold">Download
                                                     ↓</span>
                                             </div>
                                         </a>
@@ -561,21 +560,20 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                         <?php endforeach; ?>
                     </div>
                 <?php else: ?>
-                    <p class="text-xs text-[var(--ink-soft)] italic text-center py-6 bg-[var(--paper-dim-60)] rounded-xl">
-                        এখনও কোনো লেকচার নোট শেয়ার করা হয়নি।</p>
+                    <p class="text-sm text-[var(--ink-soft)] italic text-center py-6 bg-[var(--paper-dim-60)] rounded-xl">
+                        No lecture notes have been shared yet.</p>
                 <?php endif; ?>
             </div>
 
             <!-- Course-wise attendance -->
-            <div class="bg-white p-6 rounded-2xl border border-[var(--line)] space-y-5">
+            <div class="bg-white p-6 sm:p-7 rounded-2xl border border-[var(--line)] space-y-5">
                 <div class="flex items-baseline justify-between">
                     <div>
-                        <h3 class="font-display text-lg font-semibold text-[var(--ink)]">Attendance Record</h3>
-                        <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">Track your attendance rate separately for
+                        <h3 class="font-display text-xl font-semibold text-[var(--ink)]">Attendance Record</h3>
+                        <p class="text-sm text-[var(--ink-soft)] mt-1">Track your attendance rate separately for
                             each course.</p>
                     </div>
-                    <span
-                        class="font-data text-[10px] text-[var(--ink-soft)] uppercase tracking-wider hidden sm:inline">75%
+                    <span class="font-data text-xs text-[var(--ink-soft)] uppercase tracking-wider hidden sm:inline">75%
                         minimum</span>
                 </div>
 
@@ -583,24 +581,24 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <?php foreach ($course_attendance as $record): ?>
                             <div
-                                class="p-4 rounded-xl border border-[var(--line)] ledger flex flex-col justify-between space-y-3">
+                                class="p-5 rounded-xl border border-[var(--line)] ledger flex flex-col justify-between space-y-3">
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <span
-                                            class="font-data text-[9px] uppercase font-semibold text-[var(--maroon)] tracking-wide"><?php echo htmlspecialchars($record['code']); ?></span>
-                                        <h4 class="text-xs font-semibold text-[var(--ink)] mt-1 line-clamp-1">
+                                            class="font-data text-[11px] uppercase font-semibold text-[var(--maroon)] tracking-wide"><?php echo htmlspecialchars($record['code']); ?></span>
+                                        <h4 class="text-sm font-semibold text-[var(--ink)] mt-1.5 line-clamp-1">
                                             <?php echo htmlspecialchars($record['title']); ?>
                                         </h4>
                                     </div>
                                     <span
-                                        class="font-data text-base font-semibold <?php echo ($record['rate'] >= 75) ? 'text-emerald-700' : 'text-rose-700'; ?>"><?php echo $record['rate']; ?>%</span>
+                                        class="font-data text-xl font-semibold <?php echo ($record['rate'] >= 75) ? 'text-emerald-700' : 'text-rose-700'; ?>"><?php echo $record['rate']; ?>%</span>
                                 </div>
-                                <div class="space-y-1.5">
-                                    <div class="w-full bg-[var(--paper-dim)] h-1.5 rounded-full overflow-hidden">
+                                <div class="space-y-2">
+                                    <div class="w-full bg-[var(--paper-dim)] h-2 rounded-full overflow-hidden">
                                         <div class="h-full rounded-full <?php echo ($record['rate'] >= 75) ? 'bg-emerald-500' : 'bg-rose-500'; ?>"
                                             style="width: <?php echo $record['rate']; ?>%"></div>
                                     </div>
-                                    <div class="flex justify-between text-[10px] text-[var(--ink-soft)] font-medium">
+                                    <div class="flex justify-between text-xs text-[var(--ink-soft)] font-medium">
                                         <span>Present <strong
                                                 class="font-data text-[var(--ink)]"><?php echo $record['present']; ?></strong>
                                             days</span>
@@ -613,53 +611,53 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                         <?php endforeach; ?>
                     </div>
                 <?php else: ?>
-                    <p class="text-xs text-[var(--ink-soft)] italic text-center py-6 bg-[var(--paper-dim-60)] rounded-xl">No
+                    <p class="text-sm text-[var(--ink-soft)] italic text-center py-6 bg-[var(--paper-dim-60)] rounded-xl">No
                         attendance metrics recorded yet.</p>
                 <?php endif; ?>
 
                 <!-- Combined totals -->
                 <div class="pt-4 border-t border-[var(--line)] grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div
-                        class="bg-[#faf3e2] border border-[var(--gold-25)] p-4 rounded-xl flex items-center justify-between">
+                        class="bg-[#faf3e2] border border-[var(--gold-25)] p-5 rounded-xl flex items-center justify-between">
                         <div>
-                            <p class="text-[10px] font-semibold text-[var(--gold)] uppercase tracking-wide">Overall
+                            <p class="text-xs font-semibold text-[var(--gold)] uppercase tracking-wide">Overall
                                 Average
                             </p>
-                            <p class="font-data text-2xl font-semibold text-[var(--ink)] mt-0.5">
+                            <p class="font-data text-3xl font-semibold text-[var(--ink)] mt-1">
                                 <?php echo $overall_attendance_avg; ?>%
                             </p>
                         </div>
                         <span class="seal">◈</span>
                     </div>
                     <div
-                        class="bg-emerald-50/70 border border-emerald-200/70 p-4 rounded-xl flex items-center justify-between">
+                        class="bg-emerald-50/70 border border-emerald-200/70 p-5 rounded-xl flex items-center justify-between">
                         <div>
-                            <p class="text-[10px] font-semibold text-emerald-800 uppercase tracking-wide">Cumulative
+                            <p class="text-xs font-semibold text-emerald-800 uppercase tracking-wide">Cumulative
                                 Presences</p>
-                            <p class="font-data text-2xl font-semibold text-[var(--ink)] mt-0.5">
+                            <p class="font-data text-3xl font-semibold text-[var(--ink)] mt-1">
                                 <?php echo $present_days_combined; ?>
-                                <span class="text-xs font-medium text-[var(--ink-soft)]">/
+                                <span class="text-sm font-medium text-[var(--ink-soft)]">/
                                     <?php echo $total_days_combined; ?></span>
                             </p>
                         </div>
                         <span
-                            class="text-lg bg-white p-2 rounded-lg border border-emerald-200 text-emerald-700">✓</span>
+                            class="text-xl bg-white p-2.5 rounded-lg border border-emerald-200 text-emerald-700">✓</span>
                     </div>
                 </div>
             </div>
 
             <!-- Grade sheet -->
-            <div class="bg-white p-6 rounded-2xl border border-[var(--line)] space-y-4">
+            <div class="bg-white p-6 sm:p-7 rounded-2xl border border-[var(--line)] space-y-4">
                 <div class="flex items-baseline justify-between">
                     <div>
-                        <h3 class="font-display text-lg font-semibold text-[var(--ink)]">Grade Sheet</h3>
-                        <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">Verified semester results published by the
+                        <h3 class="font-display text-xl font-semibold text-[var(--ink)]">Grade Sheet</h3>
+                        <p class="text-sm text-[var(--ink-soft)] mt-1">Verified semester results published by the
                             admin panel.</p>
                     </div>
                     <?php if ($completed_sem_count > 0): ?>
                         <div class="text-right">
-                            <p class="text-[9px] uppercase font-semibold text-[var(--ink-soft)] tracking-wide">CGPA</p>
-                            <p class="font-data text-xl font-semibold text-[var(--maroon)]">
+                            <p class="text-xs uppercase font-semibold text-[var(--ink-soft)] tracking-wide">CGPA</p>
+                            <p class="font-data text-2xl font-semibold text-[var(--maroon)]">
                                 <?php echo number_format($actual_cgpa, 2); ?>
                             </p>
                         </div>
@@ -669,24 +667,24 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         <?php for ($i = 1; $i <= 8; $i++): ?>
                             <div
-                                class="p-3.5 rounded-xl border transition flex flex-col justify-between <?php echo isset($semester_results[$i]) ? 'bg-white border-[var(--gold-30)]' : 'bg-white/40 border-dashed border-[var(--line)]'; ?>">
+                                class="p-4 rounded-xl border transition flex flex-col justify-between <?php echo isset($semester_results[$i]) ? 'bg-white border-[var(--gold-30)]' : 'bg-white/40 border-dashed border-[var(--line)]'; ?>">
                                 <div class="flex items-start justify-between">
-                                    <span class="text-[10px] uppercase font-semibold text-[var(--ink-soft)]">Sem
+                                    <span class="text-xs uppercase font-semibold text-[var(--ink-soft)]">Sem
                                         0<?php echo $i; ?></span>
                                     <?php if (isset($semester_results[$i])): ?>
-                                        <span class="seal !w-5 !h-5 !text-[9px]">✓</span>
+                                        <span class="seal !w-6 !h-6 !text-[11px]">✓</span>
                                     <?php endif; ?>
                                 </div>
                                 <div class="mt-2">
                                     <?php if (isset($semester_results[$i])): ?>
                                         <span
-                                            class="font-data text-base font-semibold text-[var(--ink)]"><?php echo number_format($semester_results[$i], 2); ?></span>
+                                            class="font-data text-lg font-semibold text-[var(--ink)]"><?php echo number_format($semester_results[$i], 2); ?></span>
                                         <span
-                                            class="block text-[9px] text-emerald-700 font-semibold uppercase tracking-wide mt-0.5">Published</span>
+                                            class="block text-[11px] text-emerald-700 font-semibold uppercase tracking-wide mt-1">Published</span>
                                     <?php else: ?>
-                                        <span class="text-xs font-medium text-[var(--ink-soft)] italic">Pending</span>
+                                        <span class="text-sm font-medium text-[var(--ink-soft)] italic">Pending</span>
                                         <span
-                                            class="block text-[9px] text-[var(--ink-soft-70)] uppercase tracking-wide mt-0.5">Unreleased</span>
+                                            class="block text-[11px] text-[var(--ink-soft-70)] uppercase tracking-wide mt-1">Unreleased</span>
                                     <?php endif; ?>
                                 </div>
                             </div>
@@ -696,75 +694,75 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
             </div>
 
             <!-- CGPA predictor -->
-            <div class="bg-white p-6 rounded-2xl border border-[var(--line)] space-y-5">
+            <div class="bg-white p-6 sm:p-7 rounded-2xl border border-[var(--line)] space-y-5">
                 <div>
-                    <h3 class="font-display text-lg font-semibold text-[var(--ink)]">CGPA Forecast</h3>
-                    <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">Simulate next semester's outcome against your
+                    <h3 class="font-display text-xl font-semibold text-[var(--ink)]">CGPA Forecast</h3>
+                    <p class="text-sm text-[var(--ink-soft)] mt-1">Simulate next semester's outcome against your
                         graduation benchmark.</p>
                 </div>
                 <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                     <div>
-                        <label class="block text-[9px] font-semibold text-[var(--ink-soft)] uppercase mb-1">Current
+                        <label class="block text-xs font-semibold text-[var(--ink-soft)] uppercase mb-1.5">Current
                             CGPA</label>
                         <input type="number" id="curr_cgpa" step="0.01" max="4.0" min="0" oninput="predictCGPA()"
-                            class="w-full border border-[var(--line)] p-3 rounded-xl text-sm font-data bg-[var(--paper-dim-60)] font-semibold focus:outline-none focus:border-[var(--maroon)] focus:ring-1 focus:ring-[var(--maroon)]">
+                            class="w-full border border-[var(--line)] p-3.5 rounded-xl text-base font-data bg-[var(--paper-dim-60)] font-semibold focus:outline-none focus:border-[var(--maroon)] focus:ring-1 focus:ring-[var(--maroon)]">
                     </div>
                     <div>
-                        <label class="block text-[9px] font-semibold text-[var(--ink-soft)] uppercase mb-1">Completed
+                        <label class="block text-xs font-semibold text-[var(--ink-soft)] uppercase mb-1.5">Completed
                             Semesters</label>
                         <input type="number" id="comp_sem" max="8" min="0" oninput="predictCGPA()"
-                            class="w-full border border-[var(--line)] p-3 rounded-xl text-sm font-data bg-[var(--paper-dim-60)] font-semibold focus:outline-none focus:border-[var(--maroon)] focus:ring-1 focus:ring-[var(--maroon)]">
+                            class="w-full border border-[var(--line)] p-3.5 rounded-xl text-base font-data bg-[var(--paper-dim-60)] font-semibold focus:outline-none focus:border-[var(--maroon)] focus:ring-1 focus:ring-[var(--maroon)]">
                     </div>
                     <div>
-                        <div class="flex justify-between items-center mb-1">
-                            <label class="text-[9px] font-semibold text-[var(--ink-soft)] uppercase">Target (Next
+                        <div class="flex justify-between items-center mb-1.5">
+                            <label class="text-xs font-semibold text-[var(--ink-soft)] uppercase">Target (Next
                                 Sem)</label>
                             <span id="slider_val"
-                                class="font-data text-[10px] font-semibold text-[var(--gold)] bg-[#faf3e2] px-1.5 py-0.5 rounded border border-[var(--gold-30)]">3.85</span>
+                                class="font-data text-xs font-semibold text-[var(--gold)] bg-[#faf3e2] px-2 py-0.5 rounded border border-[var(--gold-30)]">3.85</span>
                         </div>
                         <input type="range" id="target_gpa_slider" min="0.00" max="4.00" step="0.01" value="3.85"
                             oninput="syncTargetInput(this.value)"
                             class="w-full h-2 bg-[var(--paper-dim)] rounded-lg appearance-none cursor-pointer accent-[var(--maroon)] mt-3">
                         <input type="number" id="target_gpa" step="0.01" max="4.0" min="0" value="3.85"
                             oninput="syncTargetSlider(this.value)"
-                            class="w-full border border-[var(--gold-40)] p-2 rounded-xl text-xs font-data font-semibold text-center mt-2 focus:outline-none focus:ring-1 focus:ring-[var(--gold)]">
+                            class="w-full border border-[var(--gold-40)] p-2.5 rounded-xl text-sm font-data font-semibold text-center mt-2 focus:outline-none focus:ring-1 focus:ring-[var(--gold)]">
                     </div>
                 </div>
                 <div id="prediction_result"
-                    class="p-4 rounded-xl text-center ledger border border-[var(--line)] transition-all duration-300">
-                    <p class="text-xs text-[var(--ink-soft)] font-medium">Forecasted CGPA</p>
+                    class="p-5 rounded-xl text-center ledger border border-[var(--line)] transition-all duration-300">
+                    <p class="text-sm text-[var(--ink-soft)] font-medium">Forecasted CGPA</p>
                     <div class="flex items-center justify-center space-x-2 mt-1">
                         <strong id="predicted_val"
-                            class="text-3xl font-semibold text-[var(--maroon)] font-data tracking-tight">0.000</strong>
+                            class="text-4xl font-semibold text-[var(--maroon)] font-data tracking-tight">0.000</strong>
                         <span id="trend_badge"
-                            class="text-[10px] font-semibold px-2 py-0.5 rounded-full flex items-center space-x-1"></span>
+                            class="text-xs font-semibold px-2.5 py-1 rounded-full flex items-center space-x-1"></span>
                     </div>
-                    <p id="motivational_text" class="text-[10px] text-[var(--ink-soft)] italic mt-1.5"></p>
+                    <p id="motivational_text" class="text-xs text-[var(--ink-soft)] italic mt-2"></p>
                 </div>
             </div>
         </div>
 
         <!-- Sidebar: registered courses -->
-        <div class="bg-white p-5 rounded-2xl border border-[var(--line)] h-fit lg:sticky lg:top-24">
-            <h3 class="font-display text-base font-semibold text-[var(--ink)] mb-4 pb-3 border-b border-[var(--line)]">
+        <div class="bg-white p-6 rounded-2xl border border-[var(--line)] h-fit lg:sticky lg:top-24">
+            <h3 class="font-display text-lg font-semibold text-[var(--ink)] mb-4 pb-3 border-b border-[var(--line)]">
                 Registered Courses</h3>
-            <div class="space-y-2.5 max-h-[550px] overflow-y-auto pr-1">
+            <div class="space-y-3 max-h-[550px] overflow-y-auto pr-1">
                 <?php if ($courses && $courses->num_rows > 0) {
                     while ($c = $courses->fetch_assoc()) { ?>
                         <div
-                            class="p-3 bg-[var(--paper-dim-50)] border border-[var(--line)] rounded-xl text-xs hover:border-[var(--gold-40)] transition">
+                            class="p-4 bg-[var(--paper-dim-50)] border border-[var(--line)] rounded-xl text-sm hover:border-[var(--gold-40)] transition">
                             <span
-                                class="font-data font-semibold text-[var(--maroon)] bg-white px-2 py-0.5 rounded border border-[var(--gold-25)] text-[9px] tracking-wide uppercase"><?php echo htmlspecialchars($c['course_code']); ?></span>
-                            <h4 class="font-semibold text-[var(--ink)] mt-1.5 leading-tight">
+                                class="font-data font-semibold text-[var(--maroon)] bg-white px-2.5 py-1 rounded border border-[var(--gold-25)] text-[11px] tracking-wide uppercase"><?php echo htmlspecialchars($c['course_code']); ?></span>
+                            <h4 class="font-semibold text-[var(--ink)] mt-2 leading-tight">
                                 <?php echo htmlspecialchars($c['title']); ?>
                             </h4>
-                            <p class="text-[10px] text-[var(--ink-soft)] mt-1">Faculty —
+                            <p class="text-xs text-[var(--ink-soft)] mt-1">Faculty —
                                 <?php echo htmlspecialchars($c['teacher_name'] ?? 'Not Assigned'); ?>
                             </p>
                         </div>
                     <?php }
                 } else {
-                    echo "<p class='text-xs text-[var(--ink-soft)] text-center py-4'>No courses found.</p>";
+                    echo "<p class='text-sm text-[var(--ink-soft)] text-center py-4'>No courses found.</p>";
                 } ?>
             </div>
         </div>
@@ -814,7 +812,7 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
 
             if (currentCGPA > 4.0 || targetGPA > 4.0 || currentCGPA < 0 || targetGPA < 0) {
                 document.getElementById('predicted_val').innerText = "ERROR";
-                trendBadge.className = "bg-rose-50 text-rose-600 text-[9px] px-2 py-0.5 rounded font-bold";
+                trendBadge.className = "bg-rose-50 text-rose-600 text-xs px-2.5 py-1 rounded font-bold";
                 trendBadge.innerText = "Invalid Bounds";
                 motivationalText.innerText = "GPA scale must be between 0.00 and 4.00";
                 return;
@@ -828,15 +826,15 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
 
             trendBadge.classList.remove('hidden');
             if (finalPredictedCGPA > currentCGPA) {
-                trendBadge.className = "bg-emerald-50 text-emerald-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-emerald-200";
+                trendBadge.className = "bg-emerald-50 text-emerald-700 text-xs font-black uppercase px-2.5 py-1 rounded-full border border-emerald-200";
                 trendBadge.innerHTML = "↑ Improved";
-                motivationalText.innerText = "🔥 Great trajectory! This will push your portfolio benchmark upwards.";
+                motivationalText.innerText = "Great trajectory! This will push your portfolio benchmark upwards.";
             } else if (finalPredictedCGPA < currentCGPA) {
-                trendBadge.className = "bg-rose-50 text-rose-700 text-[9px] font-black uppercase px-2 py-0.5 rounded-full border border-rose-200";
+                trendBadge.className = "bg-rose-50 text-rose-700 text-xs font-black uppercase px-2.5 py-1 rounded-full border border-rose-200";
                 trendBadge.innerHTML = "↓ Dropping";
-                motivationalText.innerText = "⚠️ Target is lower than current CGPA. Consider aiming higher to avoid dilution.";
+                motivationalText.innerText = "Target is lower than current CGPA. Consider aiming higher to avoid dilution.";
             } else {
-                trendBadge.className = "bg-slate-100 text-slate-600 text-[9px] font-black uppercase px-2 py-0.5 rounded-full";
+                trendBadge.className = "bg-slate-100 text-slate-600 text-xs font-black uppercase px-2.5 py-1 rounded-full";
                 trendBadge.innerHTML = "→ Stable";
                 motivationalText.innerText = "Maintaining consistency perfectly across semesters.";
             }
