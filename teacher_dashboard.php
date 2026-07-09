@@ -47,6 +47,8 @@ if (isset($_POST['launch_mcq'])) {
 if (isset($_POST['launch_pdf'])) {
     $course_id = $_POST['course_id'];
     $title = mysqli_real_escape_string($conn, $_POST['pdf_title']);
+    $deadline_raw = $_POST['deadline'] ?? '';
+    $deadline = !empty($deadline_raw) ? mysqli_real_escape_string($conn, str_replace('T', ' ', $deadline_raw) . ':00') : null;
 
     $pdf_name = "";
     if (isset($_FILES['question_file']) && $_FILES['question_file']['error'] == 0) {
@@ -54,19 +56,19 @@ if (isset($_POST['launch_pdf'])) {
         if (!file_exists($target_dir)) {
             mkdir($target_dir, 0777, true);
         }
-        $file_ext = strtolower(pathinfo($_FILES['question_file']['name'], PHP_EXTENSION));
+        $file_ext = strtolower(pathinfo($_FILES['question_file']['name'], PATHINFO_EXTENSION));
         if ($file_ext === 'pdf') {
             $pdf_name = $target_dir . "question_" . time() . "_" . uniqid() . ".pdf";
             move_uploaded_file($_FILES['question_file']['tmp_name'], $pdf_name);
         }
     }
 
-    if (!empty($pdf_name)) {
+    if (!empty($pdf_name) && !empty($deadline)) {
         $conn->query("UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id'");
-        $conn->query("INSERT INTO online_class_tests (course_id, title, status, test_type, pdf_question, zoom_link) VALUES ('$course_id', '$title', 'LIVE NOW', 'pdf', '$pdf_name', '#')");
-        $message = "📄 PDF Written Assignment deployed successfully!";
+        $conn->query("INSERT INTO online_class_tests (course_id, title, status, test_type, pdf_question, deadline, zoom_link) VALUES ('$course_id', '$title', 'LIVE NOW', 'pdf', '$pdf_name', '$deadline', '#')");
+        $message = "📄 PDF Written Assignment deployed successfully! Deadline: " . date("d M Y, h:i A", strtotime($deadline));
     } else {
-        $message = "❌ Failed to upload PDF. Please ensure you are uploading a valid .pdf file.";
+        $message = "❌ Failed to upload PDF. Please ensure you upload a valid .pdf file and set a deadline.";
     }
 }
 
@@ -91,7 +93,7 @@ if (isset($_POST['upload_note'])) {
     }
 
     if (!empty($file_name)) {
-        $conn->query("INSERT INTO online_class_tests (course_id, title, status, test_type, pdf_question, zoom_link) VALUES ('$course_id', '$title', 'completed', 'note', '$file_name', '#')");
+        $conn->query("INSERT INTO course_resources (course_id, title, file_path) VALUES ('$course_id', '$title', '$file_name')");
         $message = "📚 Lecture Note '$title' shared with all students successfully!";
     } else {
         $message = "❌ Failed to upload Lecture Note. Please upload a valid document/image file.";
@@ -157,7 +159,7 @@ if ($my_courses_query) {
 
                 // ১. কুয়েরি: এনরোল করা আসল স্টুডেন্টদের ফিল্টার করা
                 $course_students = $conn->query("
-                    SELECT u.name, u.email, u.id_no 
+                    SELECT u.id, u.name, u.email, u.id_no 
                     FROM users u
                     JOIN academic_records ar ON u.id = ar.student_id
                     WHERE ar.course_id = '$c_id' AND u.role = 'student'
@@ -193,6 +195,35 @@ if ($my_courses_query) {
                     WHERE course_id = '$c_id' AND test_type = 'mcq' AND status = 'completed' 
                     ORDER BY id DESC
                 ");
+
+                // ৬. কুয়েরি: এই কোর্সের সব PDF অ্যাসাইনমেন্ট (ডেডলাইনসহ) - সাবমিশন ট্র্যাকারের জন্য
+                $course_assignments = $conn->query("
+                    SELECT id, title, deadline, status 
+                    FROM online_class_tests 
+                    WHERE course_id = '$c_id' AND test_type = 'pdf' 
+                    ORDER BY id DESC
+                ");
+                $assignments_array = [];
+                if ($course_assignments) {
+                    while ($a = $course_assignments->fetch_assoc()) {
+                        $assignments_array[] = $a;
+                    }
+                }
+
+                // ৭. কুয়েরি: প্রতিটি অ্যাসাইনমেন্টের বিপরীতে কারা কারা জমা দিয়েছে
+                $assignment_subs_query = $conn->query("
+                    SELECT q.ct_id, q.student_id, q.student_name, q.pdf_submission 
+                    FROM quiz_submissions q
+                    JOIN online_class_tests o ON q.ct_id = o.id
+                    WHERE o.course_id = '$c_id' AND o.test_type = 'pdf'
+                    ORDER BY q.id DESC
+                ");
+                $assignment_submissions = [];
+                if ($assignment_subs_query) {
+                    while ($row = $assignment_subs_query->fetch_assoc()) {
+                        $assignment_submissions[$row['ct_id']][] = $row;
+                    }
+                }
 
                 $total_students = ($course_students) ? $course_students->num_rows : 0;
                 $total_submissions = ($course_submissions) ? $course_submissions->num_rows : 0;
@@ -472,6 +503,13 @@ if ($my_courses_query) {
                                         <input type="text" name="pdf_title"
                                             placeholder="Assignment Title (e.g., Mid Term Written Exam)" required
                                             class="w-full border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 p-2.5 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                        <div>
+                                            <label
+                                                class="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1">Submission
+                                                Deadline</label>
+                                            <input type="datetime-local" name="deadline" required
+                                                class="w-full border border-slate-200 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100 p-2.5 rounded-xl text-xs bg-white transition-all outline-hidden">
+                                        </div>
                                         <input type="file" name="question_file" accept="application/pdf" required
                                             class="text-xs text-slate-500 block w-full file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-[11px] file:font-bold file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 file:cursor-pointer">
                                         <button type="submit" name="launch_pdf"
@@ -501,6 +539,111 @@ if ($my_courses_query) {
                                     </form>
                                 </div>
 
+                            </div>
+
+                            <div class="p-4 bg-white border border-slate-200 rounded-2xl">
+                                <h5 class="text-xs font-bold text-slate-700 mb-2 uppercase tracking-wide">🗂️ Assignment
+                                    Submission Tracker</h5>
+                                <p class="text-[10px] text-slate-400 mb-2">একটি অ্যাসাইনমেন্ট বেছে নিন — কারা জমা দিয়েছে
+                                    আর কারা এখনও দেয়নি তা দেখুন।</p>
+
+                                <?php if (!empty($assignments_array)): ?>
+                                    <select onchange="showAssignmentSubs(<?php echo $c_id; ?>, this.value)"
+                                        class="w-full border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 p-2 rounded-xl text-xs bg-white transition-all outline-hidden mb-3">
+                                        <option value="">-- Select Assignment --</option>
+                                        <?php foreach ($assignments_array as $a):
+                                            $sub_count = isset($assignment_submissions[$a['id']]) ? count($assignment_submissions[$a['id']]) : 0;
+                                            $dl_label = !empty($a['deadline']) ? date("d M, h:i A", strtotime($a['deadline'])) : "No deadline";
+                                            ?>
+                                            <option value="<?php echo $a['id']; ?>">
+                                                <?php echo htmlspecialchars($a['title']); ?> —
+                                                <?php echo $sub_count; ?>/<?php echo $total_students; ?>
+                                                submitted (Deadline: <?php echo $dl_label; ?>)
+                                            </option>
+                                        <?php endforeach; ?>
+                                    </select>
+
+                                    <?php foreach ($assignments_array as $a):
+                                        $submitted_list = isset($assignment_submissions[$a['id']]) ? $assignment_submissions[$a['id']] : [];
+                                        $submitted_ids = array_column($submitted_list, 'student_id');
+
+                                        $not_submitted = [];
+                                        if ($course_students) {
+                                            mysqli_data_seek($course_students, 0);
+                                            while ($st = $course_students->fetch_assoc()) {
+                                                if (!in_array($st['id'], $submitted_ids)) {
+                                                    $not_submitted[] = $st;
+                                                }
+                                            }
+                                        }
+
+                                        $is_overdue = !empty($a['deadline']) && strtotime($a['deadline']) < time();
+                                        ?>
+                                        <div id="assignment-subs-<?php echo $a['id']; ?>"
+                                            class="assignment-subs-panel-<?php echo $c_id; ?> hidden space-y-3">
+
+                                            <div
+                                                class="flex justify-between items-center text-[10px] font-bold uppercase tracking-wide px-1">
+                                                <span class="<?php echo $is_overdue ? 'text-rose-600' : 'text-emerald-600'; ?>">
+                                                    <?php echo $is_overdue ? '⏰ Deadline Passed' : '🟢 Accepting Submissions'; ?>
+                                                </span>
+                                                <span class="text-slate-400">
+                                                    Deadline:
+                                                    <?php echo !empty($a['deadline']) ? date("d M Y, h:i A", strtotime($a['deadline'])) : 'N/A'; ?>
+                                                </span>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-[10px] font-bold text-emerald-700 uppercase mb-1">✅
+                                                    Submitted
+                                                    (<?php echo count($submitted_list); ?>)</p>
+                                                <div class="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                                                    <?php if (!empty($submitted_list)): ?>
+                                                        <?php foreach ($submitted_list as $sub): ?>
+                                                            <div
+                                                                class="p-2 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between text-xs">
+                                                                <span
+                                                                    class="font-bold text-slate-800 text-[11px]"><?php echo htmlspecialchars($sub['student_name']); ?></span>
+                                                                <a href="<?php echo htmlspecialchars($sub['pdf_submission']); ?>"
+                                                                    target="_blank"
+                                                                    class="text-[10px] text-blue-600 font-bold hover:underline">View
+                                                                    PDF</a>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    <?php else: ?>
+                                                        <p class="text-[11px] text-slate-400 italic text-center py-2">এখনও
+                                                            কেউ জমা দেয়নি।</p>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+
+                                            <div>
+                                                <p class="text-[10px] font-bold text-rose-600 uppercase mb-1">❌ Not
+                                                    Submitted
+                                                    (<?php echo count($not_submitted); ?>)</p>
+                                                <div class="space-y-1.5 max-h-[140px] overflow-y-auto pr-1">
+                                                    <?php if (!empty($not_submitted)): ?>
+                                                        <?php foreach ($not_submitted as $st): ?>
+                                                            <div
+                                                                class="p-2 bg-rose-50 border border-rose-100 rounded-xl flex items-center justify-between text-xs">
+                                                                <span
+                                                                    class="font-bold text-slate-800 text-[11px]"><?php echo htmlspecialchars($st['name']); ?></span>
+                                                                <span
+                                                                    class="font-mono text-[10px] text-rose-500"><?php echo htmlspecialchars($st['id_no']); ?></span>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    <?php else: ?>
+                                                        <p class="text-[11px] text-slate-400 italic text-center py-2">সবাই
+                                                            জমা দিয়ে দিয়েছে! 🎉</p>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <p class="text-[11px] text-slate-400 italic text-center py-2">এখনও কোনো PDF
+                                        অ্যাসাইনমেন্ট ডিপ্লয় করা হয়নি।</p>
+                                <?php endif; ?>
                             </div>
 
                             <div class="p-4 bg-slate-50 border border-slate-200 rounded-2xl">
@@ -652,6 +795,14 @@ if ($my_courses_query) {
             } else {
                 content.classList.add('hidden');
                 arrow.style.transform = "rotate(0deg)";
+            }
+        }
+        // ৭. অ্যাসাইনমেন্ট ড্রপডাউন থেকে বেছে নেওয়া নির্দিষ্ট অ্যাসাইনমেন্টের সাবমিশন লিস্ট দেখানো
+        function showAssignmentSubs(courseId, ctId) {
+            document.querySelectorAll(`.assignment-subs-panel-${courseId}`).forEach(p => p.classList.add('hidden'));
+            if (ctId) {
+                const panel = document.getElementById(`assignment-subs-${ctId}`);
+                if (panel) panel.classList.remove('hidden');
             }
         }
     </script>

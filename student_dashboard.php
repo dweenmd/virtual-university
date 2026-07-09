@@ -41,31 +41,41 @@ if (isset($_POST['submit_response'])) {
     $selected_option = isset($_POST['selected_option']) ? mysqli_real_escape_string($conn, $_POST['selected_option']) : "";
     $ans_text = !empty($selected_option) ? "Selected Option: " . $selected_option : "";
 
-    $uploaded_pdf_path = "";
-    if (isset($_FILES['student_pdf']) && $_FILES['student_pdf']['error'] == 0) {
-        $target_dir = "uploads/";
-        if (!file_exists($target_dir)) {
-            mkdir($target_dir, 0777, true);
-        }
-        $file_ext = strtolower(pathinfo($_FILES['student_pdf']['name'], PATHINFO_EXTENSION));
-        if ($file_ext === 'pdf') {
-            $uploaded_pdf_path = $target_dir . "submission_" . time() . "_" . uniqid() . ".pdf";
-            move_uploaded_file($_FILES['student_pdf']['tmp_name'], $uploaded_pdf_path);
-        }
-    }
+    // ডেডলাইন চেক (শুধু PDF অ্যাসাইনমেন্টের ক্ষেত্রে)
+    $ct_check = $conn->query("SELECT test_type, deadline FROM online_class_tests WHERE id='$ct_id' LIMIT 1");
+    $ct_row = ($ct_check && $ct_check->num_rows > 0) ? $ct_check->fetch_assoc() : null;
+    $deadline_passed = ($ct_row && $ct_row['test_type'] === 'pdf' && !empty($ct_row['deadline']) && strtotime($ct_row['deadline']) < time());
 
-    $check = $conn->query("SELECT id FROM quiz_submissions WHERE ct_id='$ct_id' AND student_id='$student_id'");
-    if ($check && $check->num_rows == 0) {
-        $conn->query("INSERT INTO quiz_submissions (ct_id, student_id, student_name, answers, pdf_submission) VALUES ('$ct_id', '$student_id', '$student_name', '$ans_text', '$uploaded_pdf_path')");
-        $msg = "Your assessment response has been securely saved.";
-        $msg_type = "success";
-
-        if (!empty($selected_option)) {
-            $_SESSION['last_submitted_mcq'][$ct_id] = $selected_option;
-        }
-    } else {
-        $msg = "Response already logged for this assessment.";
+    if ($deadline_passed) {
+        $msg = "❌ Deadline is over. This assignment no longer accepts submissions.";
         $msg_type = "error";
+    } else {
+        $uploaded_pdf_path = "";
+        if (isset($_FILES['student_pdf']) && $_FILES['student_pdf']['error'] == 0) {
+            $target_dir = "uploads/";
+            if (!file_exists($target_dir)) {
+                mkdir($target_dir, 0777, true);
+            }
+            $file_ext = strtolower(pathinfo($_FILES['student_pdf']['name'], PATHINFO_EXTENSION));
+            if ($file_ext === 'pdf') {
+                $uploaded_pdf_path = $target_dir . "submission_" . time() . "_" . uniqid() . ".pdf";
+                move_uploaded_file($_FILES['student_pdf']['tmp_name'], $uploaded_pdf_path);
+            }
+        }
+
+        $check = $conn->query("SELECT id FROM quiz_submissions WHERE ct_id='$ct_id' AND student_id='$student_id'");
+        if ($check && $check->num_rows == 0) {
+            $conn->query("INSERT INTO quiz_submissions (ct_id, student_id, student_name, answers, pdf_submission) VALUES ('$ct_id', '$student_id', '$student_name', '$ans_text', '$uploaded_pdf_path')");
+            $msg = "Your assessment response has been securely saved.";
+            $msg_type = "success";
+
+            if (!empty($selected_option)) {
+                $_SESSION['last_submitted_mcq'][$ct_id] = $selected_option;
+            }
+        } else {
+            $msg = "Response already logged for this assessment.";
+            $msg_type = "error";
+        }
     }
 }
 
@@ -122,8 +132,15 @@ if ($result_query) {
     }
 }
 
-// Live running Class / Tests
-$live_ct_query = $conn->query("SELECT online_class_tests.*, courses.title AS course_title, courses.course_code FROM online_class_tests JOIN courses ON online_class_tests.course_id = courses.id WHERE online_class_tests.status = 'LIVE NOW' ORDER BY online_class_tests.id DESC LIMIT 1");
+// Live running Class / Tests (শুধু নিজের এনরোল করা কোর্সের মধ্যে, meet/mcq — pdf আলাদা সেকশনে দেখানো হয় নিচে)
+$live_ct_query = $conn->query("
+    SELECT online_class_tests.*, courses.title AS course_title, courses.course_code 
+    FROM online_class_tests 
+    JOIN courses ON online_class_tests.course_id = courses.id 
+    JOIN academic_records ar ON ar.course_id = online_class_tests.course_id AND ar.student_id = '$student_id'
+    WHERE online_class_tests.status = 'LIVE NOW' AND online_class_tests.test_type IN ('meet', 'mcq')
+    ORDER BY online_class_tests.id DESC LIMIT 1
+");
 $live_ct = ($live_ct_query) ? $live_ct_query->fetch_assoc() : null;
 
 $has_submitted_mcq = false;
@@ -137,14 +154,30 @@ if ($live_ct && $live_ct['test_type'] == 'mcq') {
     }
 }
 
-// --- LECTURE NOTES / RESOURCES (course-wise, always visible — not tied to LIVE NOW status) ---
-$lecture_notes_query = $conn->query("
-    SELECT oct.id, oct.title, oct.pdf_question, oct.course_id, c.title AS course_title, c.course_code
+// --- ACTIVE PDF ASSIGNMENTS (course-wise, deadline soho, নিজের এনরোল করা কোর্সের সব লাইভ অ্যাসাইনমেন্ট) ---
+$assignments_query = $conn->query("
+    SELECT oct.*, c.title AS course_title, c.course_code,
+        (SELECT pdf_submission FROM quiz_submissions WHERE ct_id = oct.id AND student_id = '$student_id' LIMIT 1) AS my_submission
     FROM online_class_tests oct
     JOIN academic_records ar ON ar.course_id = oct.course_id AND ar.student_id = '$student_id'
     JOIN courses c ON c.id = oct.course_id
-    WHERE oct.test_type = 'note'
-    ORDER BY c.course_code ASC, oct.id DESC
+    WHERE oct.test_type = 'pdf' AND oct.status = 'LIVE NOW'
+    ORDER BY oct.deadline ASC
+");
+$active_assignments = [];
+if ($assignments_query) {
+    while ($row = $assignments_query->fetch_assoc()) {
+        $active_assignments[] = $row;
+    }
+}
+
+// --- LECTURE NOTES / RESOURCES (course-wise, always visible — not tied to LIVE NOW status) ---
+$lecture_notes_query = $conn->query("
+    SELECT cr.id, cr.title, cr.file_path AS pdf_question, cr.course_id, c.title AS course_title, c.course_code
+    FROM course_resources cr
+    JOIN academic_records ar ON ar.course_id = cr.course_id AND ar.student_id = '$student_id'
+    JOIN courses c ON c.id = cr.course_id
+    ORDER BY c.course_code ASC, cr.id DESC
 ");
 
 $lecture_notes_by_course = [];
@@ -411,27 +444,82 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                                     Answer</button>
                             </form>
                         <?php endif; ?>
-                    <?php } elseif ($live_ct['test_type'] == 'pdf') { ?>
-                        <form method="POST" enctype="multipart/form-data" action=""
-                            class="bg-white/[0.06] p-4 rounded-xl border border-white/10 space-y-4">
-                            <input type="hidden" name="ct_id" value="<?php echo $live_ct['id']; ?>">
-                            <a href="<?php echo htmlspecialchars($live_ct['pdf_question']); ?>" target="_blank"
-                                class="inline-flex bg-[var(--gold-soft)] text-[var(--maroon-deep)] font-semibold px-4 py-2.5 rounded-lg text-xs hover:brightness-95 transition">Download
-                                Question Sheet ↓</a>
-                            <div class="border-t border-white/10 pt-3">
-                                <label
-                                    class="block text-[10px] uppercase font-semibold tracking-wider mb-2 text-white/40">Upload
-                                    your script (PDF only)</label>
-                                <input type="file" name="student_pdf" accept="application/pdf" required
-                                    class="text-xs text-white/70 file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white">
-                            </div>
-                            <button type="submit" name="submit_response"
-                                class="bg-emerald-600 text-white text-xs font-semibold px-5 py-2.5 rounded-lg hover:bg-emerald-500 transition cursor-pointer">Submit
-                                PDF Script</button>
-                        </form>
                     <?php } ?>
                 </div>
             <?php } ?>
+
+            <!-- PDF Assignments (course-wise, with deadline) -->
+            <div class="bg-white p-6 rounded-2xl border border-[var(--line)] space-y-5">
+                <div>
+                    <h3 class="font-display text-lg font-semibold text-[var(--ink)]">📄 Assignments</h3>
+                    <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">শিক্ষকদের দেওয়া লিখিত অ্যাসাইনমেন্ট —
+                        ডেডলাইনের
+                        মধ্যে PDF জমা দিন।</p>
+                </div>
+
+                <?php if (!empty($active_assignments)): ?>
+                    <div class="space-y-4">
+                        <?php foreach ($active_assignments as $asn):
+                            $is_overdue = !empty($asn['deadline']) && strtotime($asn['deadline']) < time();
+                            $already_submitted = !empty($asn['my_submission']);
+                            ?>
+                            <div class="p-4 rounded-xl border border-[var(--line)] ledger space-y-3">
+                                <div class="flex items-center justify-between gap-2 flex-wrap">
+                                    <div class="flex items-center gap-2">
+                                        <span
+                                            class="font-data text-[9px] uppercase font-semibold text-[var(--maroon)] bg-[#faf3e2] px-2 py-0.5 rounded border border-[var(--gold-25)]"><?php echo htmlspecialchars($asn['course_code']); ?></span>
+                                        <span
+                                            class="text-xs font-semibold text-[var(--ink)]"><?php echo htmlspecialchars($asn['title']); ?></span>
+                                    </div>
+                                    <span
+                                        class="text-[9px] font-bold uppercase px-2 py-0.5 rounded-full <?php echo $is_overdue ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'; ?>">
+                                        <?php echo $is_overdue ? '⏰ Deadline Over' : '🟢 Open'; ?>
+                                    </span>
+                                </div>
+
+                                <p class="text-[10px] text-[var(--ink-soft)]">Deadline:
+                                    <span class="font-semibold text-[var(--ink)]">
+                                        <?php echo !empty($asn['deadline']) ? date("d M Y, h:i A", strtotime($asn['deadline'])) : 'N/A'; ?>
+                                    </span>
+                                </p>
+
+                                <a href="<?php echo htmlspecialchars($asn['pdf_question']); ?>" target="_blank"
+                                    class="inline-flex bg-[var(--gold-soft)] text-[var(--maroon-deep)] font-semibold px-4 py-2 rounded-lg text-xs hover:brightness-95 transition">Download
+                                    Question Sheet ↓</a>
+
+                                <?php if ($already_submitted): ?>
+                                    <div
+                                        class="bg-emerald-50 border border-emerald-200 p-3 rounded-xl text-xs text-emerald-800 flex items-center justify-between">
+                                        <span>✅ Submitted successfully</span>
+                                        <a href="<?php echo htmlspecialchars($asn['my_submission']); ?>" target="_blank"
+                                            class="font-semibold hover:underline">View my script</a>
+                                    </div>
+                                <?php elseif ($is_overdue): ?>
+                                    <div class="bg-rose-50 border border-rose-200 p-3 rounded-xl text-xs text-rose-700">
+                                        ❌ Deadline is over. Submission is no longer accepted.
+                                    </div>
+                                <?php else: ?>
+                                    <form method="POST" enctype="multipart/form-data" action=""
+                                        class="border-t border-[var(--line)] pt-3 space-y-2">
+                                        <input type="hidden" name="ct_id" value="<?php echo $asn['id']; ?>">
+                                        <label
+                                            class="block text-[10px] uppercase font-semibold tracking-wider text-[var(--ink-soft)]">Upload
+                                            your script (PDF only)</label>
+                                        <input type="file" name="student_pdf" accept="application/pdf" required
+                                            class="text-xs text-[var(--ink-soft)] file:mr-3 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-[var(--paper-dim-60)] file:text-[var(--ink)]">
+                                        <button type="submit" name="submit_response"
+                                            class="bg-emerald-600 text-white text-xs font-semibold px-5 py-2 rounded-lg hover:bg-emerald-500 transition cursor-pointer">Submit
+                                            PDF Script</button>
+                                    </form>
+                                <?php endif; ?>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <p class="text-xs text-[var(--ink-soft)] italic text-center py-6 bg-[var(--paper-dim-60)] rounded-xl">
+                        এখনও কোনো অ্যাসাইনমেন্ট দেওয়া হয়নি।</p>
+                <?php endif; ?>
+            </div>
 
             <!-- Lecture Notes / Resources -->
             <div class="bg-white p-6 rounded-2xl border border-[var(--line)] space-y-5">
