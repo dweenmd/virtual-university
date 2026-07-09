@@ -137,6 +137,31 @@ if ($live_ct && $live_ct['test_type'] == 'mcq') {
     }
 }
 
+// --- LECTURE NOTES / RESOURCES (course-wise, always visible — not tied to LIVE NOW status) ---
+$lecture_notes_query = $conn->query("
+    SELECT oct.id, oct.title, oct.pdf_question, oct.course_id, c.title AS course_title, c.course_code
+    FROM online_class_tests oct
+    JOIN academic_records ar ON ar.course_id = oct.course_id AND ar.student_id = '$student_id'
+    JOIN courses c ON c.id = oct.course_id
+    WHERE oct.test_type = 'note'
+    ORDER BY c.course_code ASC, oct.id DESC
+");
+
+$lecture_notes_by_course = [];
+if ($lecture_notes_query) {
+    while ($n = $lecture_notes_query->fetch_assoc()) {
+        $cid = $n['course_id'];
+        if (!isset($lecture_notes_by_course[$cid])) {
+            $lecture_notes_by_course[$cid] = [
+                'course_title' => $n['course_title'],
+                'course_code' => $n['course_code'],
+                'notes' => []
+            ];
+        }
+        $lecture_notes_by_course[$cid]['notes'][] = $n;
+    }
+}
+
 // Registered Syllabus list fetch
 $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM courses LEFT JOIN users ON courses.teacher_id = users.id ORDER BY courses.semester ASC");
 ?>
@@ -279,7 +304,8 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                         <?php echo htmlspecialchars($live_ct['course_title']); ?>
                     </h2>
                     <p class="text-xs text-white/50 mb-3 font-data relative">
-                        <?php echo htmlspecialchars($live_ct['course_code']); ?></p>
+                        <?php echo htmlspecialchars($live_ct['course_code']); ?>
+                    </p>
                     <div
                         class="text-sm font-medium bg-white/[0.06] border border-white/10 p-3.5 rounded-xl mb-5 text-amber-50/90 relative">
                         <span class="text-[var(--gold-soft)] font-semibold">Question —
@@ -407,6 +433,51 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                 </div>
             <?php } ?>
 
+            <!-- Lecture Notes / Resources -->
+            <div class="bg-white p-6 rounded-2xl border border-[var(--line)] space-y-5">
+                <div>
+                    <h3 class="font-display text-lg font-semibold text-[var(--ink)]">Lecture Notes & Resources</h3>
+                    <p class="text-[11px] text-[var(--ink-soft)] mt-0.5">Course অনুযায়ী শিক্ষকদের শেয়ার করা লেকচার নোট
+                        — যেকোনো সময় ডাউনলোড করুন।</p>
+                </div>
+
+                <?php if (!empty($lecture_notes_by_course)): ?>
+                    <div class="space-y-5">
+                        <?php foreach ($lecture_notes_by_course as $course_notes): ?>
+                            <div>
+                                <div class="flex items-center gap-2 mb-2">
+                                    <span
+                                        class="font-data text-[9px] uppercase font-semibold text-[var(--maroon)] bg-[#faf3e2] px-2 py-0.5 rounded border border-[var(--gold-25)]"><?php echo htmlspecialchars($course_notes['course_code']); ?></span>
+                                    <span
+                                        class="text-xs font-semibold text-[var(--ink)]"><?php echo htmlspecialchars($course_notes['course_title']); ?></span>
+                                </div>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                    <?php foreach ($course_notes['notes'] as $note): ?>
+                                        <a href="<?php echo htmlspecialchars($note['pdf_question']); ?>" target="_blank"
+                                            class="flex items-center gap-3 p-3 rounded-xl border border-[var(--line)] ledger hover:border-[var(--gold-40)] transition group">
+                                            <span
+                                                class="w-9 h-9 rounded-lg bg-[#faf3e2] border border-[var(--gold-25)] flex items-center justify-center text-base shrink-0">📄</span>
+                                            <div class="min-w-0">
+                                                <p
+                                                    class="text-xs font-semibold text-[var(--ink)] truncate group-hover:text-[var(--maroon)] transition">
+                                                    <?php echo htmlspecialchars($note['title']); ?>
+                                                </p>
+                                                <span
+                                                    class="text-[9px] text-[var(--ink-soft)] uppercase tracking-wide font-semibold">Download
+                                                    ↓</span>
+                                            </div>
+                                        </a>
+                                    <?php endforeach; ?>
+                                </div>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <p class="text-xs text-[var(--ink-soft)] italic text-center py-6 bg-[var(--paper-dim-60)] rounded-xl">
+                        এখনও কোনো লেকচার নোট শেয়ার করা হয়নি।</p>
+                <?php endif; ?>
+            </div>
+
             <!-- Course-wise attendance -->
             <div class="bg-white p-6 rounded-2xl border border-[var(--line)] space-y-5">
                 <div class="flex items-baseline justify-between">
@@ -501,7 +572,8 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                         <div class="text-right">
                             <p class="text-[9px] uppercase font-semibold text-[var(--ink-soft)] tracking-wide">CGPA</p>
                             <p class="font-data text-xl font-semibold text-[var(--maroon)]">
-                                <?php echo number_format($actual_cgpa, 2); ?></p>
+                                <?php echo number_format($actual_cgpa, 2); ?>
+                            </p>
                         </div>
                     <?php endif; ?>
                 </div>
