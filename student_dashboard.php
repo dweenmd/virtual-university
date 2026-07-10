@@ -23,18 +23,29 @@ if (isset($_POST['verify_token'])) {
     $ct_id = intval($_POST['ct_id']);
     $course_id = intval($_POST['course_id']);
 
-    $check_token = $conn->query("SELECT id FROM online_class_tests WHERE id='$ct_id' AND attendance_token='$input_token' AND status='LIVE NOW'");
+   // FIX: elapsed time now calculated inside MySQL (TIMESTAMPDIFF) instead of
+    // PHP's strtotime(), so a timezone mismatch can't let a stale token pass
+    // (or reject a still-valid one).
+    $check_token = $conn->query("SELECT id, attendance_token, attendance_started_at, TIMESTAMPDIFF(SECOND, attendance_started_at, NOW()) AS elapsed_seconds FROM online_class_tests WHERE id='$ct_id' AND status='LIVE NOW' AND test_type='meet' LIMIT 1");
 
+    $valid = false;
     if ($check_token && $check_token->num_rows > 0) {
+        $row = $check_token->fetch_assoc();
+        $elapsed = !empty($row['attendance_started_at']) ? (int) $row['elapsed_seconds'] : PHP_INT_MAX;
+        if (!empty($row['attendance_token']) && hash_equals((string) $row['attendance_token'], $input_token) && $elapsed < 120) {
+            $valid = true;
+        }
+    }
+
+    if ($valid) {
         $conn->query("INSERT INTO academic_records (student_id, course_id, ct_marks, total_days, present_days) VALUES ('$student_id', '$course_id', 0, 1, 1) ON DUPLICATE KEY UPDATE present_days=present_days+1, total_days=total_days+1");
-        // Remember that THIS live session's token has already been verified, so the
-        // attendance card can be hidden for the rest of this live session (persists
-        // across page reloads via session, until the meet session ends/changes).
-        $_SESSION['verified_attendance'][$ct_id] = true;
+        // Remember which token this student verified for this ct_id — a NEW window
+        // (new token) will make the attendance card visible again.
+        $_SESSION['verified_attendance'][$ct_id] = $input_token;
         $msg = "Success! Attendance recorded successfully.";
         $msg_type = "success";
     } else {
-        $msg = "Invalid Security Token! Verification failed.";
+        $msg = "Invalid or expired Security Token! Verification failed.";
         $msg_type = "error";
     }
 }
@@ -150,7 +161,25 @@ $live_meet = ($live_meet_query) ? $live_meet_query->fetch_assoc() : null;
 
 // If this student already verified the attendance token for the current live meet
 // session, there's nothing left for them to do here — hide the card entirely.
-$meet_already_verified = ($live_meet && isset($_SESSION['verified_attendance'][$live_meet['id']]));
+// Work out whether an attendance window is currently open for this live meet
+$attendance_active = false;
+$attendance_remaining = 0;
+if ($live_meet && !empty($live_meet['attendance_started_at'])) {
+    // FIX: elapsed time now calculated inside MySQL (TIMESTAMPDIFF) instead of
+    // PHP's strtotime(), so PHP/MySQL timezone mismatches can no longer cause
+    // the countdown to run longer than 2 minutes.
+    $elapsed_query = $conn->query("SELECT TIMESTAMPDIFF(SECOND, attendance_started_at, NOW()) AS elapsed_seconds FROM online_class_tests WHERE id = '{$live_meet['id']}' LIMIT 1");
+    $elapsed_row = ($elapsed_query) ? $elapsed_query->fetch_assoc() : null;
+    $elapsed = $elapsed_row ? (int) $elapsed_row['elapsed_seconds'] : PHP_INT_MAX;
+
+    $already_verified = isset($_SESSION['verified_attendance'][$live_meet['id']])
+        && $_SESSION['verified_attendance'][$live_meet['id']] === $live_meet['attendance_token'];
+
+    if ($elapsed < 120 && !$already_verified) {
+        $attendance_active = true;
+        $attendance_remaining = 120 - $elapsed;
+    }
+}
 
 // --- LIVE MCQ SESSION — independent query, same reasoning as above ---
 $live_mcq_query = $conn->query("
@@ -349,11 +378,14 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                 </div>
             <?php endif; ?>
 
-            <?php if ($live_meet && !$meet_already_verified) { ?>
-                <!-- Live MEET session / attendance card — independent of any live MCQ.
-                     Hidden once this student has already verified their token for
-                     this specific session (see $meet_already_verified above). -->
-                <div
+            <!-- live meet and attendance cards are independent of any live MCQ session, so they are displayed first. The
+            attendance card is only shown if the teacher has opened a 2-minute window and the student hasn't verified
+            yet.-->
+
+            <?php if ($live_meet) { ?>
+                <!-- Meet Link card — stays visible for the entire duration of the live class,
+         independent of attendance. Only disappears when the teacher ends the class. -->
+                <div id="meet-card"
                     class="bg-gradient-to-br from-[var(--maroon)] via-[var(--maroon-deep)] to-[#1a0a0a] p-6 sm:p-8 rounded-2xl text-white shadow-lg shadow-black/10 border border-[var(--gold-25)] relative overflow-hidden">
                     <div class="absolute -right-10 -top-10 w-40 h-40 rounded-full border border-white/5"></div>
                     <span
@@ -361,47 +393,58 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                         <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
                         <span>Live Session In Progress</span>
                     </span>
-                    <h2 class="font-display text-3xl font-semibold mt-3 text-white relative">
+                    <h2 id="meet-course-title" class="font-display text-3xl font-semibold mt-3 text-white relative">
                         <?php echo htmlspecialchars($live_meet['course_title']); ?>
                     </h2>
-                    <p class="text-sm text-white/50 mb-3 font-data relative">
+                    <p id="meet-course-code" class="text-sm text-white/50 mb-3 font-data relative">
                         <?php echo htmlspecialchars($live_meet['course_code']); ?>
                     </p>
                     <div
                         class="text-base font-medium bg-white/[0.06] border border-white/10 p-4 rounded-xl mb-5 text-amber-50/90 relative">
                         <span class="text-[var(--gold-soft)] font-semibold">Topic —
-                        </span><?php echo htmlspecialchars($live_meet['title']); ?>
+                        </span><span id="meet-topic-text"><?php echo htmlspecialchars($live_meet['title']); ?></span>
                     </div>
 
-                    <div class="space-y-4 bg-white/[0.06] p-5 rounded-xl border border-white/10 relative">
-                        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/40">
-                            <span
-                                class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[11px]">1</span>
-                            Join the live session
-                        </div>
-                        <a href="<?php echo htmlspecialchars($live_meet['zoom_link']); ?>" target="_blank"
-                            class="inline-flex bg-white text-[var(--maroon)] font-semibold px-5 py-3 rounded-lg text-sm hover:bg-amber-50 transition">Open
-                            Google Meet / Zoom →</a>
-                        <form method="POST" action="" class="pt-4 border-t border-white/10">
-                            <input type="hidden" name="ct_id" value="<?php echo $live_meet['id']; ?>">
-                            <input type="hidden" name="course_id" value="<?php echo $live_meet['course_id']; ?>">
-                            <label
-                                class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider mb-2 text-white/40">
-                                <span
-                                    class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[11px]">2</span>
-                                Enter the live token
-                            </label>
-                            <div class="flex space-x-2">
-                                <input type="text" name="token_code" maxlength="4" placeholder="Pin" required
-                                    class="bg-white text-[var(--ink)] px-4 py-2.5 rounded-lg text-base font-data font-semibold tracking-[0.3em] w-36 text-center uppercase focus:outline-none focus:ring-2 focus:ring-[var(--gold)]">
-                                <button type="submit" name="verify_token"
-                                    class="bg-emerald-600 text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-emerald-500 transition cursor-pointer">Verify
-                                    Attendance</button>
-                            </div>
-                        </form>
+                    <a id="meet-link-btn" href="<?php echo htmlspecialchars($live_meet['zoom_link']); ?>" target="_blank"
+                        class="inline-flex bg-white text-[var(--maroon)] font-semibold px-5 py-3 rounded-lg text-sm hover:bg-amber-50 transition">Open
+                        Google Meet / Zoom →</a>
+                </div>
+            <?php } else { ?>
+                <div id="meet-card" class="hidden"></div>
+            <?php } ?>
+
+            <!-- Attendance card — only shown while the teacher's 2-minute attendance window is open.
+     Auto-hides when the timer runs out (JS) or once this student has verified. -->
+            <div id="attendance-card"
+                class="<?php echo $attendance_active ? '' : 'hidden'; ?> bg-gradient-to-br from-amber-600 via-amber-700 to-[#4a2e05] p-6 sm:p-7 rounded-2xl text-white shadow-lg shadow-black/10 border border-amber-300/30 relative overflow-hidden">
+                <span
+                    class="bg-white/10 text-white font-semibold text-xs px-3 py-1.5 rounded-full uppercase tracking-wider inline-flex items-center space-x-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full bg-white animate-pulse"></span>
+                    <span>Attendance Window Open</span>
+                </span>
+                <h3 class="font-display text-xl font-semibold mt-3">Enter the PIN announced by your teacher</h3>
+                <p class="text-sm text-white/70 mt-1">You have a limited time to submit — don't wait!</p>
+
+                <div class="w-full bg-white/20 h-2 rounded-full overflow-hidden mt-4">
+                    <div id="att-timer-fill" class="h-full bg-white rounded-full transition-all duration-1000 linear"
+                        style="width: <?php echo $attendance_active ? round(($attendance_remaining / 120) * 100) : 100; ?>%">
                     </div>
                 </div>
-            <?php } ?>
+                <p class="text-xs text-white/80 mt-1.5 font-data">Time left: <span
+                        id="att-seconds"><?php echo $attendance_active ? $attendance_remaining : 120; ?></span>s</p>
+
+                <form id="attendance-form" method="POST" action="" class="mt-4 flex space-x-2">
+                    <input type="hidden" name="ct_id" id="att-ct-id"
+                        value="<?php echo $attendance_active ? $live_meet['id'] : ''; ?>">
+                    <input type="hidden" name="course_id" id="att-course-id"
+                        value="<?php echo $attendance_active ? $live_meet['course_id'] : ''; ?>">
+                    <input type="text" name="token_code" maxlength="4" placeholder="Pin" required
+                        class="bg-white text-[var(--ink)] px-4 py-2.5 rounded-lg text-base font-data font-semibold tracking-[0.3em] w-36 text-center uppercase focus:outline-none focus:ring-2 focus:ring-white">
+                    <button type="submit" name="verify_token"
+                        class="bg-white text-amber-700 text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-amber-50 transition cursor-pointer">Verify
+                        Attendance</button>
+                </form>
+            </div>
 
             <?php if ($live_mcq) { ?>
                 <!-- Live MCQ session — independent of any live Meet session -->
@@ -888,6 +931,95 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                 motivationalText.innerText = "Maintaining consistency perfectly across semesters.";
             }
         }
+        // --- Live Meet + Attendance window polling ---
+        let attendanceTimerInterval = null;
+        let localSecondsLeft = <?php echo $attendance_active ? $attendance_remaining : 0; ?>;
+
+        function updateMeetCard(meet) {
+            const card = document.getElementById('meet-card');
+            if (!card) return;
+            if (meet) {
+                const titleEl = document.getElementById('meet-course-title');
+                const codeEl = document.getElementById('meet-course-code');
+                const topicEl = document.getElementById('meet-topic-text');
+                const linkBtn = document.getElementById('meet-link-btn');
+                if (titleEl) titleEl.innerText = meet.course_title;
+                if (codeEl) codeEl.innerText = meet.course_code;
+                if (topicEl) topicEl.innerText = meet.title;
+                if (linkBtn) linkBtn.href = meet.zoom_link;
+                card.classList.remove('hidden');
+            } else {
+                card.classList.add('hidden');
+            }
+        }
+
+        function updateAttendanceTimerDisplay() {
+            const secEl = document.getElementById('att-seconds');
+            const fillEl = document.getElementById('att-timer-fill');
+            if (secEl) secEl.innerText = Math.max(localSecondsLeft, 0);
+            if (fillEl) fillEl.style.width = Math.max((localSecondsLeft / 120) * 100, 0) + '%';
+        }
+
+        function startLocalCountdown() {
+            if (attendanceTimerInterval) clearInterval(attendanceTimerInterval);
+            attendanceTimerInterval = setInterval(() => {
+                localSecondsLeft--;
+                if (localSecondsLeft <= 0) {
+                    hideAttendanceCard();
+                    return;
+                }
+                updateAttendanceTimerDisplay();
+            }, 1000);
+        }
+
+        function showAttendanceCard(att) {
+            const card = document.getElementById('attendance-card');
+            if (!card) return;
+            const ctIdEl = document.getElementById('att-ct-id');
+            const courseIdEl = document.getElementById('att-course-id');
+            if (ctIdEl) ctIdEl.value = att.ct_id;
+            if (courseIdEl) courseIdEl.value = att.course_id;
+
+            localSecondsLeft = att.seconds_left;
+            updateAttendanceTimerDisplay();
+            card.classList.remove('hidden');
+            startLocalCountdown();
+        }
+
+        function hideAttendanceCard() {
+            const card = document.getElementById('attendance-card');
+            if (card) card.classList.add('hidden');
+            if (attendanceTimerInterval) {
+                clearInterval(attendanceTimerInterval);
+                attendanceTimerInterval = null;
+            }
+        }
+
+        async function pollLiveStatus() {
+            try {
+                const res = await fetch('live_status.php');
+                const data = await res.json();
+
+                updateMeetCard(data.meet);
+
+                if (data.attendance) {
+                    showAttendanceCard(data.attendance);
+                } else {
+                    hideAttendanceCard();
+                }
+            } catch (e) {
+                console.error('Live status poll failed', e);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            <?php if ($attendance_active): ?>
+                updateAttendanceTimerDisplay();
+                startLocalCountdown();
+            <?php endif; ?>
+            pollLiveStatus();
+            setInterval(pollLiveStatus, 5000);
+        });
     </script>
 </body>
 

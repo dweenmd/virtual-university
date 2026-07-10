@@ -15,21 +15,19 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
 $teacher_id = $_SESSION['user_id'];
 $message = "";
 
-// 1. Action handler: launch a Google Meet session + secret attendance token
+// 1. Action handler: launch a Google Meet session (attendance is now started separately)
 if (isset($_POST['launch_meet'])) {
     $course_id = $_POST['course_id'];
     $title = mysqli_real_escape_string($conn, $_POST['title']);
     $meet_url = mysqli_real_escape_string($conn, $_POST['meet_url']);
-    $token = rand(1000, 9999); // 4-digit random secret token
 
-    // FIX: only mark previous LIVE MEET sessions as completed for this course, not every
-    // online_class_tests row. The old query ("WHERE course_id='$course_id'" with no
-    // test_type filter) was also completing live PDF assignments and MCQ tests that had
-    // nothing to do with this action, which made PDF assignments vanish from the student
-    // dashboard before their deadline.
+    // Only mark previous LIVE MEET sessions as completed for this course, not every
+    // online_class_tests row (keeps PDF assignments and MCQ tests untouched).
     $conn->query("UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id' AND test_type='meet'");
-    $conn->query("INSERT INTO online_class_tests (course_id, title, status, zoom_link, test_type, attendance_token) VALUES ('$course_id', '$title', 'LIVE NOW', '$meet_url', 'meet', '$token')");
-    $message = "🟢 Live Class Launched! Secret Attendance Token for Students: <strong class='text-red-600 text-lg font-mono'>$token</strong>";
+    // NOTE: attendance_token/attendance_started_at start empty/NULL — the teacher now
+    // opens the attendance window explicitly using the "Start Attendance Window" button.
+    $conn->query("INSERT INTO online_class_tests (course_id, title, status, zoom_link, test_type, attendance_token, attendance_started_at) VALUES ('$course_id', '$title', 'LIVE NOW', '$meet_url', 'meet', '', NULL)");
+    $message = "🟢 Live Class Launched! Students can now see the Meet link on their dashboard. Use \"Start Attendance Window\" below whenever you're ready to take attendance.";
 }
 
 // 2. Action handler: deploy an instant MCQ test (with correct answer)
@@ -40,10 +38,8 @@ if (isset($_POST['launch_mcq'])) {
     $b = mysqli_real_escape_string($conn, $_POST['op_b']);
     $c = mysqli_real_escape_string($conn, $_POST['op_c']);
     $d = mysqli_real_escape_string($conn, $_POST['op_d']);
-    $correct_option = mysqli_real_escape_string($conn, $_POST['correct_option']); // saved to the database as the correct answer
+    $correct_option = mysqli_real_escape_string($conn, $_POST['correct_option']);
 
-    // FIX: only mark previous LIVE MCQ tests as completed for this course, not every
-    // online_class_tests row (see note in launch_meet above for why this matters).
     $conn->query("UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id' AND test_type='mcq'");
     $conn->query("INSERT INTO online_class_tests (course_id, title, status, test_type, option_a, option_b, option_c, option_d, correct_option, zoom_link) VALUES ('$course_id', '$question', 'LIVE NOW', 'mcq', '$a', '$b', '$c', '$d', '$correct_option', '#')");
     $message = "⚡ Live MCQ Assessment deployed successfully with Correct Answer Set!";
@@ -70,10 +66,6 @@ if (isset($_POST['launch_pdf'])) {
     }
 
     if (!empty($pdf_name) && !empty($deadline)) {
-        // FIX: removed the blanket "UPDATE ... SET status='completed' WHERE course_id='$course_id'"
-        // that used to run here. PDF assignments are allowed to run concurrently (each with its
-        // own deadline) and should only stop accepting submissions once their own deadline passes
-        // — not be force-closed just because a new assignment/meet/mcq was launched for the course.
         $conn->query("INSERT INTO online_class_tests (course_id, title, status, test_type, pdf_question, deadline, zoom_link) VALUES ('$course_id', '$title', 'LIVE NOW', 'pdf', '$pdf_name', '$deadline', '#')");
         $message = "📄 PDF Written Assignment deployed successfully! Deadline: " . date("d M Y, h:i A", strtotime($deadline));
     } else {
@@ -214,7 +206,6 @@ if ($my_courses_query) {
                 $c_id = $course['id'];
                 $c_sem = $course['semester'];
 
-                // 1. Query: filter for actually enrolled students
                 $course_students = $conn->query("
                     SELECT u.id, u.name, u.email, u.id_no 
                     FROM users u
@@ -223,7 +214,6 @@ if ($my_courses_query) {
                     ORDER BY u.id_no ASC
                 ");
 
-                // 2. Query: quiz/assignment submission data
                 $course_submissions = $conn->query("
                     SELECT q.*, o.title AS test_title, o.test_type 
                     FROM quiz_submissions q 
@@ -233,10 +223,27 @@ if ($my_courses_query) {
                 ");
 
                 // 3. Query: check whether a live session is currently active
-                $check_live = $conn->query("SELECT id, title, test_type FROM online_class_tests WHERE course_id = '$c_id' AND status = 'LIVE NOW' LIMIT 1");
+                // NOTE: SELECT * now, so attendance_token / attendance_started_at are available too.
+                $check_live = $conn->query("SELECT * FROM online_class_tests WHERE course_id = '$c_id' AND status = 'LIVE NOW' LIMIT 1");
                 $live_session = ($check_live && $check_live->num_rows > 0) ? $check_live->fetch_assoc() : null;
 
-                // 4. Query: attendance-present data
+                // Work out whether an attendance window is currently open for this course's live meet
+                // FIX: elapsed time now calculated inside MySQL (TIMESTAMPDIFF) instead of
+                // PHP's strtotime(), so PHP/MySQL timezone mismatches can no longer cause
+                // the countdown shown to the teacher to be wrong.
+                $attendance_active = false;
+                $attendance_remaining = 0;
+                if ($live_session && $live_session['test_type'] === 'meet' && !empty($live_session['attendance_started_at'])) {
+                    $elapsed_query = $conn->query("SELECT TIMESTAMPDIFF(SECOND, attendance_started_at, NOW()) AS elapsed_seconds FROM online_class_tests WHERE id = '{$live_session['id']}' LIMIT 1");
+                    $elapsed_row = ($elapsed_query) ? $elapsed_query->fetch_assoc() : null;
+                    $elapsed = $elapsed_row ? (int) $elapsed_row['elapsed_seconds'] : PHP_INT_MAX;
+
+                    if ($elapsed < 120) {
+                        $attendance_active = true;
+                        $attendance_remaining = 120 - $elapsed;
+                    }
+                }
+
                 $attendance_students = $conn->query("
                     SELECT u.name, u.id_no, ar.present_days
                     FROM users u
@@ -245,7 +252,6 @@ if ($my_courses_query) {
                     ORDER BY ar.present_days DESC
                 ");
 
-                // 5. Query: completed (older) MCQ tests — archived here for PDF export and deletion
                 $old_mcqs = $conn->query("
                     SELECT id, title, correct_option 
                     FROM online_class_tests 
@@ -253,7 +259,6 @@ if ($my_courses_query) {
                     ORDER BY id DESC
                 ");
 
-                // 6. Query: every PDF assignment for this course (with deadline) — for the submission tracker
                 $course_assignments = $conn->query("
                     SELECT id, title, deadline, status 
                     FROM online_class_tests 
@@ -267,7 +272,6 @@ if ($my_courses_query) {
                     }
                 }
 
-                // 7. Query: who has submitted against each assignment
                 $assignment_subs_query = $conn->query("
                     SELECT q.ct_id, q.student_id, q.student_name, q.pdf_submission 
                     FROM quiz_submissions q
@@ -459,6 +463,31 @@ if ($my_courses_query) {
                                     <button onclick="stopLiveSession(<?php echo $c_id; ?>)"
                                         class="mt-3 bg-rose-600 hover:bg-rose-700 text-white font-bold py-1.5 px-4 rounded-lg text-xs transition shadow-xs cursor-pointer">End
                                         Live Session 🛑</button>
+
+                                    <!-- Attendance window controls: only meaningful for a live MEET session -->
+                                    <div id="attendance-ctrl-<?php echo $c_id; ?>"
+                                        class="mt-4 pt-4 border-t border-rose-200/60 <?php echo ($live_session && $live_session['test_type'] === 'meet') ? '' : 'hidden'; ?>">
+                                        <div id="att-idle-<?php echo $c_id; ?>"
+                                            class="<?php echo $attendance_active ? 'hidden' : ''; ?>">
+                                            <button onclick="startAttendance(<?php echo $c_id; ?>)"
+                                                id="start-att-btn-<?php echo $c_id; ?>"
+                                                class="bg-amber-600 hover:bg-amber-700 text-white font-bold py-2 px-4 rounded-lg text-xs transition shadow-xs cursor-pointer">🎯
+                                                Start Attendance Window (2 min)</button>
+                                        </div>
+                                        <div id="att-active-<?php echo $c_id; ?>"
+                                            class="<?php echo $attendance_active ? '' : 'hidden'; ?> bg-white/70 border border-amber-300 rounded-xl p-3">
+                                            <p class="text-xs font-bold text-amber-700 uppercase tracking-wide mb-1">
+                                                Attendance Window Open</p>
+                                            <p class="text-sm text-[var(--ink)]">PIN: <span
+                                                    id="att-token-<?php echo $c_id; ?>"
+                                                    class="font-data font-black text-lg text-rose-600"><?php echo $attendance_active ? htmlspecialchars($live_session['attendance_token']) : ''; ?></span>
+                                            </p>
+                                            <p class="text-xs text-[var(--ink-soft)] mt-1">Closes in <span
+                                                    id="att-countdown-<?php echo $c_id; ?>"
+                                                    class="font-data font-bold"><?php echo $attendance_active ? $attendance_remaining : 120; ?></span>s
+                                            </p>
+                                        </div>
+                                    </div>
                                 </div>
                                 <p id="offline-placeholder-<?php echo $c_id; ?>"
                                     class="text-sm text-[var(--ink-soft)] italic <?php echo $live_session ? 'hidden' : ''; ?>">
@@ -743,6 +772,9 @@ if ($my_courses_query) {
     </div>
 
     <script>
+        // Track countdown intervals per course so we can clear/restart them cleanly
+        const attendanceIntervals = {};
+
         // 1. AJAX mechanism to end a live session
         async function stopLiveSession(courseId) {
             if (!confirm("Are you sure you want to end this live session?")) return;
@@ -762,6 +794,7 @@ if ($my_courses_query) {
                     const liveDetails = document.getElementById(`live-details-${courseId}`);
                     const placeholder = document.getElementById(`offline-placeholder-${courseId}`);
                     const statusBox = document.getElementById(`live-status-box-${courseId}`);
+                    const attendanceCtrl = document.getElementById(`attendance-ctrl-${courseId}`);
 
                     if (statusBadge) {
                         statusBadge.innerText = 'OFFLINE';
@@ -771,6 +804,12 @@ if ($my_courses_query) {
                     if (placeholder) placeholder.classList.remove('hidden');
                     if (statusBox) {
                         statusBox.className = "p-5 rounded-2xl border transition-all duration-300 bg-[var(--paper-dim-60)] border-[var(--line)]";
+                    }
+                    // Ending the class also closes any open attendance window
+                    if (attendanceCtrl) attendanceCtrl.classList.add('hidden');
+                    if (attendanceIntervals[courseId]) {
+                        clearInterval(attendanceIntervals[courseId]);
+                        delete attendanceIntervals[courseId];
                     }
                 } else {
                     alert("Error: " + result.message);
@@ -803,7 +842,7 @@ if ($my_courses_query) {
             }
         }
 
-        // 3. Enables the Delete button only after the archive PDF has been downloaded — a safe two-step delete flow
+        // 3. Enables the Delete button only after the archive PDF has been downloaded
         function enableMcqDelete(courseId) {
             const btn = document.getElementById(`delete-mcq-btn-${courseId}`);
             if (btn) {
@@ -814,7 +853,7 @@ if ($my_courses_query) {
             }
         }
 
-        // 4. AJAX mechanism to delete old MCQs (only enabled once the PDF has been downloaded)
+        // 4. AJAX mechanism to delete old MCQs
         async function deleteOldMcqs(courseId) {
             if (!confirm("Once you confirm, every archived MCQ for this course will be permanently deleted. Are you sure?")) return;
 
@@ -844,7 +883,7 @@ if ($my_courses_query) {
             }
         }
 
-        // 5. Generalized section toggle mechanism (used by Enrolled, Attendance and Archive alike)
+        // 5. Generalized section toggle mechanism
         function toggleSection(contentId, arrowId) {
             const content = document.getElementById(contentId);
             const arrow = document.getElementById(arrowId);
@@ -857,6 +896,7 @@ if ($my_courses_query) {
                 arrow.style.transform = "rotate(0deg)";
             }
         }
+
         // 6. Shows the submission list for whichever assignment is selected in the dropdown
         function showAssignmentSubs(courseId, ctId) {
             document.querySelectorAll(`.assignment-subs-panel-${courseId}`).forEach(p => p.classList.add('hidden'));
@@ -865,6 +905,71 @@ if ($my_courses_query) {
                 if (panel) panel.classList.remove('hidden');
             }
         }
+
+        // 7. Start a fresh 2-minute attendance window for a live meet session
+        async function startAttendance(courseId) {
+            const formData = new FormData();
+            formData.append('course_id', courseId);
+
+            try {
+                const response = await fetch('start_attendance.php', {
+                    method: 'POST',
+                    body: formData
+                });
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    const idleBox = document.getElementById(`att-idle-${courseId}`);
+                    const activeBox = document.getElementById(`att-active-${courseId}`);
+                    if (idleBox) idleBox.classList.add('hidden');
+                    if (activeBox) activeBox.classList.remove('hidden');
+
+                    const tokenEl = document.getElementById(`att-token-${courseId}`);
+                    if (tokenEl) tokenEl.innerText = result.token;
+
+                    startAttendanceCountdown(courseId, result.duration);
+                } else {
+                    alert("Error: " + result.message);
+                }
+            } catch (error) {
+                console.error("AJAX Error:", error);
+                alert("Something went wrong while starting the attendance window.");
+            }
+        }
+
+        // 8. Client-side countdown for the attendance window; auto-resets UI to idle at 0
+        function startAttendanceCountdown(courseId, seconds) {
+            if (attendanceIntervals[courseId]) clearInterval(attendanceIntervals[courseId]);
+
+            let remaining = seconds;
+            const countdownEl = document.getElementById(`att-countdown-${courseId}`);
+            if (countdownEl) countdownEl.innerText = remaining;
+
+            attendanceIntervals[courseId] = setInterval(() => {
+                remaining--;
+                if (countdownEl) countdownEl.innerText = Math.max(remaining, 0);
+
+                if (remaining <= 0) {
+                    clearInterval(attendanceIntervals[courseId]);
+                    delete attendanceIntervals[courseId];
+                    const idleBox = document.getElementById(`att-idle-${courseId}`);
+                    const activeBox = document.getElementById(`att-active-${courseId}`);
+                    if (activeBox) activeBox.classList.add('hidden');
+                    if (idleBox) idleBox.classList.remove('hidden');
+                }
+            }, 1000);
+        }
+
+        // Resume any countdown that was already active when the page loaded/refreshed
+        document.addEventListener('DOMContentLoaded', () => {
+            document.querySelectorAll('[id^="att-countdown-"]').forEach(el => {
+                const courseId = el.id.replace('att-countdown-', '');
+                const activeBox = document.getElementById(`att-active-${courseId}`);
+                if (activeBox && !activeBox.classList.contains('hidden')) {
+                    startAttendanceCountdown(courseId, parseInt(el.innerText, 10) || 120);
+                }
+            });
+        });
     </script>
 </body>
 
