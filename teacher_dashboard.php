@@ -22,8 +22,12 @@ if (isset($_POST['launch_meet'])) {
     $meet_url = mysqli_real_escape_string($conn, $_POST['meet_url']);
     $token = rand(1000, 9999); // 4-digit random secret token
 
-    // Mark previous live classes as completed, then launch the new class as live
-    $conn->query("UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id'");
+    // FIX: only mark previous LIVE MEET sessions as completed for this course, not every
+    // online_class_tests row. The old query ("WHERE course_id='$course_id'" with no
+    // test_type filter) was also completing live PDF assignments and MCQ tests that had
+    // nothing to do with this action, which made PDF assignments vanish from the student
+    // dashboard before their deadline.
+    $conn->query("UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id' AND test_type='meet'");
     $conn->query("INSERT INTO online_class_tests (course_id, title, status, zoom_link, test_type, attendance_token) VALUES ('$course_id', '$title', 'LIVE NOW', '$meet_url', 'meet', '$token')");
     $message = "🟢 Live Class Launched! Secret Attendance Token for Students: <strong class='text-red-600 text-lg font-mono'>$token</strong>";
 }
@@ -38,7 +42,9 @@ if (isset($_POST['launch_mcq'])) {
     $d = mysqli_real_escape_string($conn, $_POST['op_d']);
     $correct_option = mysqli_real_escape_string($conn, $_POST['correct_option']); // saved to the database as the correct answer
 
-    $conn->query("UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id'");
+    // FIX: only mark previous LIVE MCQ tests as completed for this course, not every
+    // online_class_tests row (see note in launch_meet above for why this matters).
+    $conn->query("UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id' AND test_type='mcq'");
     $conn->query("INSERT INTO online_class_tests (course_id, title, status, test_type, option_a, option_b, option_c, option_d, correct_option, zoom_link) VALUES ('$course_id', '$question', 'LIVE NOW', 'mcq', '$a', '$b', '$c', '$d', '$correct_option', '#')");
     $message = "⚡ Live MCQ Assessment deployed successfully with Correct Answer Set!";
 }
@@ -64,7 +70,10 @@ if (isset($_POST['launch_pdf'])) {
     }
 
     if (!empty($pdf_name) && !empty($deadline)) {
-        $conn->query("UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id'");
+        // FIX: removed the blanket "UPDATE ... SET status='completed' WHERE course_id='$course_id'"
+        // that used to run here. PDF assignments are allowed to run concurrently (each with its
+        // own deadline) and should only stop accepting submissions once their own deadline passes
+        // — not be force-closed just because a new assignment/meet/mcq was launched for the course.
         $conn->query("INSERT INTO online_class_tests (course_id, title, status, test_type, pdf_question, deadline, zoom_link) VALUES ('$course_id', '$title', 'LIVE NOW', 'pdf', '$pdf_name', '$deadline', '#')");
         $message = "📄 PDF Written Assignment deployed successfully! Deadline: " . date("d M Y, h:i A", strtotime($deadline));
     } else {

@@ -27,6 +27,10 @@ if (isset($_POST['verify_token'])) {
 
     if ($check_token && $check_token->num_rows > 0) {
         $conn->query("INSERT INTO academic_records (student_id, course_id, ct_marks, total_days, present_days) VALUES ('$student_id', '$course_id', 0, 1, 1) ON DUPLICATE KEY UPDATE present_days=present_days+1, total_days=total_days+1");
+        // Remember that THIS live session's token has already been verified, so the
+        // attendance card can be hidden for the rest of this live session (persists
+        // across page reloads via session, until the meet session ends/changes).
+        $_SESSION['verified_attendance'][$ct_id] = true;
         $msg = "Success! Attendance recorded successfully.";
         $msg_type = "success";
     } else {
@@ -132,21 +136,37 @@ if ($result_query) {
     }
 }
 
-// Live running Class / Tests (only within the student's own enrolled courses, meet/mcq — pdf is shown in a separate section below)
-$live_ct_query = $conn->query("
+// --- LIVE MEET SESSION (attendance card) — independent query so an MCQ launch
+// for the same course can never hide an in-progress meet session ---
+$live_meet_query = $conn->query("
     SELECT online_class_tests.*, courses.title AS course_title, courses.course_code 
     FROM online_class_tests 
     JOIN courses ON online_class_tests.course_id = courses.id 
     JOIN academic_records ar ON ar.course_id = online_class_tests.course_id AND ar.student_id = '$student_id'
-    WHERE online_class_tests.status = 'LIVE NOW' AND online_class_tests.test_type IN ('meet', 'mcq')
+    WHERE online_class_tests.status = 'LIVE NOW' AND online_class_tests.test_type = 'meet'
     ORDER BY online_class_tests.id DESC LIMIT 1
 ");
-$live_ct = ($live_ct_query) ? $live_ct_query->fetch_assoc() : null;
+$live_meet = ($live_meet_query) ? $live_meet_query->fetch_assoc() : null;
+
+// If this student already verified the attendance token for the current live meet
+// session, there's nothing left for them to do here — hide the card entirely.
+$meet_already_verified = ($live_meet && isset($_SESSION['verified_attendance'][$live_meet['id']]));
+
+// --- LIVE MCQ SESSION — independent query, same reasoning as above ---
+$live_mcq_query = $conn->query("
+    SELECT online_class_tests.*, courses.title AS course_title, courses.course_code 
+    FROM online_class_tests 
+    JOIN courses ON online_class_tests.course_id = courses.id 
+    JOIN academic_records ar ON ar.course_id = online_class_tests.course_id AND ar.student_id = '$student_id'
+    WHERE online_class_tests.status = 'LIVE NOW' AND online_class_tests.test_type = 'mcq'
+    ORDER BY online_class_tests.id DESC LIMIT 1
+");
+$live_mcq = ($live_mcq_query) ? $live_mcq_query->fetch_assoc() : null;
 
 $has_submitted_mcq = false;
 $submitted_option = "";
-if ($live_ct && $live_ct['test_type'] == 'mcq') {
-    $check_sub = $conn->query("SELECT answers FROM quiz_submissions WHERE ct_id='{$live_ct['id']}' AND student_id='$student_id' LIMIT 1");
+if ($live_mcq) {
+    $check_sub = $conn->query("SELECT answers FROM quiz_submissions WHERE ct_id='{$live_mcq['id']}' AND student_id='$student_id' LIMIT 1");
     if ($check_sub && $check_sub->num_rows > 0) {
         $has_submitted_mcq = true;
         $sub_row = $check_sub->fetch_assoc();
@@ -154,14 +174,19 @@ if ($live_ct && $live_ct['test_type'] == 'mcq') {
     }
 }
 
-// --- ACTIVE PDF ASSIGNMENTS (course-wise, with deadline, all live assignments in the student's enrolled courses) ---
+// --- ACTIVE PDF ASSIGNMENTS (course-wise, with deadline, all assignments in the student's enrolled courses) ---
+// FIX: Previously filtered by "status = 'LIVE NOW'". But launching a new Meet/MCQ session for the
+// course marks ALL online_class_tests rows for that course (including PDF assignments) as
+// 'completed', which made assignments disappear from the student view even though their
+// deadline hadn't passed yet. An assignment should stay visible until its own deadline expires,
+// regardless of what other live sessions are started. So we now filter by deadline instead of status.
 $assignments_query = $conn->query("
     SELECT oct.*, c.title AS course_title, c.course_code,
         (SELECT pdf_submission FROM quiz_submissions WHERE ct_id = oct.id AND student_id = '$student_id' LIMIT 1) AS my_submission
     FROM online_class_tests oct
     JOIN academic_records ar ON ar.course_id = oct.course_id AND ar.student_id = '$student_id'
     JOIN courses c ON c.id = oct.course_id
-    WHERE oct.test_type = 'pdf' AND oct.status = 'LIVE NOW'
+    WHERE oct.test_type = 'pdf' AND (oct.deadline IS NULL OR oct.deadline >= NOW())
     ORDER BY oct.deadline ASC
 ");
 $active_assignments = [];
@@ -324,8 +349,10 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                 </div>
             <?php endif; ?>
 
-            <?php if ($live_ct) { ?>
-                <!-- Live test section remains identical -->
+            <?php if ($live_meet && !$meet_already_verified) { ?>
+                <!-- Live MEET session / attendance card — independent of any live MCQ.
+                     Hidden once this student has already verified their token for
+                     this specific session (see $meet_already_verified above). -->
                 <div
                     class="bg-gradient-to-br from-[var(--maroon)] via-[var(--maroon-deep)] to-[#1a0a0a] p-6 sm:p-8 rounded-2xl text-white shadow-lg shadow-black/10 border border-[var(--gold-25)] relative overflow-hidden">
                     <div class="absolute -right-10 -top-10 w-40 h-40 rounded-full border border-white/5"></div>
@@ -335,116 +362,138 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                         <span>Live Session In Progress</span>
                     </span>
                     <h2 class="font-display text-3xl font-semibold mt-3 text-white relative">
-                        <?php echo htmlspecialchars($live_ct['course_title']); ?>
+                        <?php echo htmlspecialchars($live_meet['course_title']); ?>
                     </h2>
                     <p class="text-sm text-white/50 mb-3 font-data relative">
-                        <?php echo htmlspecialchars($live_ct['course_code']); ?>
+                        <?php echo htmlspecialchars($live_meet['course_code']); ?>
+                    </p>
+                    <div
+                        class="text-base font-medium bg-white/[0.06] border border-white/10 p-4 rounded-xl mb-5 text-amber-50/90 relative">
+                        <span class="text-[var(--gold-soft)] font-semibold">Topic —
+                        </span><?php echo htmlspecialchars($live_meet['title']); ?>
+                    </div>
+
+                    <div class="space-y-4 bg-white/[0.06] p-5 rounded-xl border border-white/10 relative">
+                        <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/40">
+                            <span
+                                class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[11px]">1</span>
+                            Join the live session
+                        </div>
+                        <a href="<?php echo htmlspecialchars($live_meet['zoom_link']); ?>" target="_blank"
+                            class="inline-flex bg-white text-[var(--maroon)] font-semibold px-5 py-3 rounded-lg text-sm hover:bg-amber-50 transition">Open
+                            Google Meet / Zoom →</a>
+                        <form method="POST" action="" class="pt-4 border-t border-white/10">
+                            <input type="hidden" name="ct_id" value="<?php echo $live_meet['id']; ?>">
+                            <input type="hidden" name="course_id" value="<?php echo $live_meet['course_id']; ?>">
+                            <label
+                                class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider mb-2 text-white/40">
+                                <span
+                                    class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[11px]">2</span>
+                                Enter the live token
+                            </label>
+                            <div class="flex space-x-2">
+                                <input type="text" name="token_code" maxlength="4" placeholder="Pin" required
+                                    class="bg-white text-[var(--ink)] px-4 py-2.5 rounded-lg text-base font-data font-semibold tracking-[0.3em] w-36 text-center uppercase focus:outline-none focus:ring-2 focus:ring-[var(--gold)]">
+                                <button type="submit" name="verify_token"
+                                    class="bg-emerald-600 text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-emerald-500 transition cursor-pointer">Verify
+                                    Attendance</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            <?php } ?>
+
+            <?php if ($live_mcq) { ?>
+                <!-- Live MCQ session — independent of any live Meet session -->
+                <div
+                    class="bg-gradient-to-br from-[var(--maroon)] via-[var(--maroon-deep)] to-[#1a0a0a] p-6 sm:p-8 rounded-2xl text-white shadow-lg shadow-black/10 border border-[var(--gold-25)] relative overflow-hidden">
+                    <div class="absolute -right-10 -top-10 w-40 h-40 rounded-full border border-white/5"></div>
+                    <span
+                        class="bg-white/10 text-[var(--gold-soft)] font-semibold text-xs px-3 py-1.5 rounded-full uppercase tracking-wider inline-flex items-center space-x-1.5 relative">
+                        <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+                        <span>Live MCQ In Progress</span>
+                    </span>
+                    <h2 class="font-display text-3xl font-semibold mt-3 text-white relative">
+                        <?php echo htmlspecialchars($live_mcq['course_title']); ?>
+                    </h2>
+                    <p class="text-sm text-white/50 mb-3 font-data relative">
+                        <?php echo htmlspecialchars($live_mcq['course_code']); ?>
                     </p>
                     <div
                         class="text-base font-medium bg-white/[0.06] border border-white/10 p-4 rounded-xl mb-5 text-amber-50/90 relative">
                         <span class="text-[var(--gold-soft)] font-semibold">Question —
-                        </span><?php echo htmlspecialchars($live_ct['title']); ?>
+                        </span><?php echo htmlspecialchars($live_mcq['title']); ?>
                     </div>
 
-                    <?php if ($live_ct['test_type'] == 'meet') { ?>
-                        <div class="space-y-4 bg-white/[0.06] p-5 rounded-xl border border-white/10 relative">
-                            <div class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-white/40">
+                    <?php if ($has_submitted_mcq):
+                        $correct_ans = $live_mcq['correct_option'];
+                        $is_correct = ($submitted_option === $correct_ans);
+                        ?>
+                        <div class="bg-white/[0.06] border border-white/10 p-5 rounded-xl space-y-4">
+                            <div class="flex items-center justify-between border-b border-white/10 pb-3">
+                                <span class="text-sm font-semibold uppercase tracking-wider text-white/50">Result</span>
                                 <span
-                                    class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[11px]">1</span>
-                                Join the live session
+                                    class="px-3.5 py-1.5 rounded-full text-xs font-semibold uppercase <?php echo $is_correct ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'; ?>"><?php echo $is_correct ? 'Correct ✓' : 'Incorrect ✗'; ?></span>
                             </div>
-                            <a href="<?php echo htmlspecialchars($live_ct['zoom_link']); ?>" target="_blank"
-                                class="inline-flex bg-white text-[var(--maroon)] font-semibold px-5 py-3 rounded-lg text-sm hover:bg-amber-50 transition">Open
-                                Google Meet / Zoom →</a>
-                            <form method="POST" action="" class="pt-4 border-t border-white/10">
-                                <input type="hidden" name="ct_id" value="<?php echo $live_ct['id']; ?>">
-                                <input type="hidden" name="course_id" value="<?php echo $live_ct['course_id']; ?>">
-                                <label
-                                    class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider mb-2 text-white/40">
-                                    <span
-                                        class="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[11px]">2</span>
-                                    Enter the live token
-                                </label>
-                                <div class="flex space-x-2">
-                                    <input type="text" name="token_code" maxlength="4" placeholder="Pin" required
-                                        class="bg-white text-[var(--ink)] px-4 py-2.5 rounded-lg text-base font-data font-semibold tracking-[0.3em] w-36 text-center uppercase focus:outline-none focus:ring-2 focus:ring-[var(--gold)]">
-                                    <button type="submit" name="verify_token"
-                                        class="bg-emerald-600 text-white text-sm font-semibold px-6 py-2.5 rounded-lg hover:bg-emerald-500 transition cursor-pointer">Verify
-                                        Attendance</button>
-                                </div>
-                            </form>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                <?php
+                                $options = ['A' => 'option_a', 'B' => 'option_b', 'C' => 'option_c', 'D' => 'option_d'];
+                                foreach ($options as $key => $col):
+                                    $bg_class = "bg-white text-[var(--ink)]";
+                                    $border_badge = "";
+                                    if ($key === $correct_ans) {
+                                        $bg_class = "bg-emerald-50 border-2 border-emerald-500 text-emerald-900 font-semibold";
+                                        $border_badge = " <span class='ml-auto bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded'>Correct</span>";
+                                    } elseif ($key === $submitted_option && !$is_correct) {
+                                        $bg_class = "bg-rose-50 border-2 border-rose-400 text-rose-900 font-semibold";
+                                        $border_badge = " <span class='ml-auto bg-rose-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded'>Your Pick</span>";
+                                    } elseif ($key === $submitted_option && $is_correct) {
+                                        $border_badge = " <span class='ml-auto bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded'>Your Pick ✓</span>";
+                                    }
+                                    ?>
+                                    <div class="p-4 rounded-xl flex items-center shadow-xs <?php echo $bg_class; ?>">
+                                        <span class="font-data text-[var(--ink-soft)] mr-2"><?php echo $key; ?></span>
+                                        <span><?php echo htmlspecialchars($live_mcq[$col]); ?></span>
+                                        <?php echo $border_badge; ?>
+                                    </div>
+                                <?php endforeach; ?>
+                            </div>
                         </div>
-                    <?php } elseif ($live_ct['test_type'] == 'mcq') { ?>
-                        <?php if ($has_submitted_mcq):
-                            $correct_ans = $live_ct['correct_option'];
-                            $is_correct = ($submitted_option === $correct_ans);
-                            ?>
-                            <div class="bg-white/[0.06] border border-white/10 p-5 rounded-xl space-y-4">
-                                <div class="flex items-center justify-between border-b border-white/10 pb-3">
-                                    <span class="text-sm font-semibold uppercase tracking-wider text-white/50">Result</span>
-                                    <span
-                                        class="px-3.5 py-1.5 rounded-full text-xs font-semibold uppercase <?php echo $is_correct ? 'bg-emerald-500 text-white' : 'bg-rose-500 text-white'; ?>"><?php echo $is_correct ? 'Correct ✓' : 'Incorrect ✗'; ?></span>
-                                </div>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                                    <?php
-                                    $options = ['A' => 'option_a', 'B' => 'option_b', 'C' => 'option_c', 'D' => 'option_d'];
-                                    foreach ($options as $key => $col):
-                                        $bg_class = "bg-white text-[var(--ink)]";
-                                        $border_badge = "";
-                                        if ($key === $correct_ans) {
-                                            $bg_class = "bg-emerald-50 border-2 border-emerald-500 text-emerald-900 font-semibold";
-                                            $border_badge = " <span class='ml-auto bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded'>Correct</span>";
-                                        } elseif ($key === $submitted_option && !$is_correct) {
-                                            $bg_class = "bg-rose-50 border-2 border-rose-400 text-rose-900 font-semibold";
-                                            $border_badge = " <span class='ml-auto bg-rose-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded'>Your Pick</span>";
-                                        } elseif ($key === $submitted_option && $is_correct) {
-                                            $border_badge = " <span class='ml-auto bg-emerald-600 text-white text-[10px] font-semibold px-2 py-0.5 rounded'>Your Pick ✓</span>";
-                                        }
-                                        ?>
-                                        <div class="p-4 rounded-xl flex items-center shadow-xs <?php echo $bg_class; ?>">
-                                            <span class="font-data text-[var(--ink-soft)] mr-2"><?php echo $key; ?></span>
-                                            <span><?php echo htmlspecialchars($live_ct[$col]); ?></span>
-                                            <?php echo $border_badge; ?>
-                                        </div>
-                                    <?php endforeach; ?>
-                                </div>
+                    <?php else: ?>
+                        <form method="POST" action="" class="bg-white/[0.06] p-5 rounded-xl border border-white/10">
+                            <input type="hidden" name="ct_id" value="<?php echo $live_mcq['id']; ?>">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4 text-[var(--ink)]">
+                                <label
+                                    class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
+                                    <input type="radio" name="selected_option" value="A" required
+                                        class="accent-[var(--maroon)] w-4 h-4">
+                                    <span><span class="font-data text-[var(--ink-soft)]">A</span>
+                                        <?php echo htmlspecialchars($live_mcq['option_a']); ?></span>
+                                </label>
+                                <label
+                                    class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
+                                    <input type="radio" name="selected_option" value="B" class="accent-[var(--maroon)] w-4 h-4">
+                                    <span><span class="font-data text-[var(--ink-soft)]">B</span>
+                                        <?php echo htmlspecialchars($live_mcq['option_b']); ?></span>
+                                </label>
+                                <label
+                                    class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
+                                    <input type="radio" name="selected_option" value="C" class="accent-[var(--maroon)] w-4 h-4">
+                                    <span><span class="font-data text-[var(--ink-soft)]">C</span>
+                                        <?php echo htmlspecialchars($live_mcq['option_c']); ?></span>
+                                </label>
+                                <label
+                                    class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
+                                    <input type="radio" name="selected_option" value="D" class="accent-[var(--maroon)] w-4 h-4">
+                                    <span><span class="font-data text-[var(--ink-soft)]">D</span>
+                                        <?php echo htmlspecialchars($live_mcq['option_d']); ?></span>
+                                </label>
                             </div>
-                        <?php else: ?>
-                            <form method="POST" action="" class="bg-white/[0.06] p-5 rounded-xl border border-white/10">
-                                <input type="hidden" name="ct_id" value="<?php echo $live_ct['id']; ?>">
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm mb-4 text-[var(--ink)]">
-                                    <label
-                                        class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
-                                        <input type="radio" name="selected_option" value="A" required
-                                            class="accent-[var(--maroon)] w-4 h-4">
-                                        <span><span class="font-data text-[var(--ink-soft)]">A</span>
-                                            <?php echo htmlspecialchars($live_ct['option_a']); ?></span>
-                                    </label>
-                                    <label
-                                        class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
-                                        <input type="radio" name="selected_option" value="B" class="accent-[var(--maroon)] w-4 h-4">
-                                        <span><span class="font-data text-[var(--ink-soft)]">B</span>
-                                            <?php echo htmlspecialchars($live_ct['option_b']); ?></span>
-                                    </label>
-                                    <label
-                                        class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
-                                        <input type="radio" name="selected_option" value="C" class="accent-[var(--maroon)] w-4 h-4">
-                                        <span><span class="font-data text-[var(--ink-soft)]">C</span>
-                                            <?php echo htmlspecialchars($live_ct['option_c']); ?></span>
-                                    </label>
-                                    <label
-                                        class="bg-white p-4 rounded-xl flex items-center space-x-3 cursor-pointer hover:bg-amber-50/60 transition has-[:checked]:ring-2 has-[:checked]:ring-[var(--gold)]">
-                                        <input type="radio" name="selected_option" value="D" class="accent-[var(--maroon)] w-4 h-4">
-                                        <span><span class="font-data text-[var(--ink-soft)]">D</span>
-                                            <?php echo htmlspecialchars($live_ct['option_d']); ?></span>
-                                    </label>
-                                </div>
-                                <button type="submit" name="submit_response"
-                                    class="bg-[var(--gold-soft)] text-[var(--maroon-deep)] text-sm font-semibold px-6 py-3 rounded-lg hover:brightness-95 transition cursor-pointer">Submit
-                                    Answer</button>
-                            </form>
-                        <?php endif; ?>
-                    <?php } ?>
+                            <button type="submit" name="submit_response"
+                                class="bg-[var(--gold-soft)] text-[var(--maroon-deep)] text-sm font-semibold px-6 py-3 rounded-lg hover:brightness-95 transition cursor-pointer">Submit
+                                Answer</button>
+                        </form>
+                    <?php endif; ?>
                 </div>
             <?php } ?>
 
