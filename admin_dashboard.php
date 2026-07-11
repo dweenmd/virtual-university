@@ -13,56 +13,97 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'admin') {
 
 // Detect whether this request came in via AJAX (fetch) - if so, respond with JSON only, no HTML
 $is_ajax = isset($_SERVER['HTTP_X_REQUESTED_WITH']) && strtolower($_SERVER['HTTP_X_REQUESTED_WITH']) === 'xmlhttprequest';
+if ($is_ajax) {
+    header('Content-Type: application/json');
+}
 
 $message = "";
 
-// Admin action: stop a live class
-if (isset($_POST['stop_live'])) {
-    $course_id = intval($_POST['course_id']);
-    $sql_stop = "UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id' AND status='LIVE NOW'";
-    if ($conn->query($sql_stop)) {
-        $message = "🔴 Live Session Terminated successfully!";
-        if ($is_ajax) {
-            echo json_encode(['status' => 'success', 'message' => $message, 'course_id' => $course_id]);
-            exit();
-        }
-    } elseif ($is_ajax) {
-        echo json_encode(['status' => 'error', 'message' => 'Could not terminate the session.']);
-        exit();
-    }
-}
+try {
 
-// Student enrollment action
-if (isset($_POST['add_student'])) {
-    $name = mysqli_real_escape_string($conn, $_POST['name']);
-    $email = mysqli_real_escape_string($conn, $_POST['email']);
-    $password = mysqli_real_escape_string($conn, $_POST['password']);
-    $id_no = mysqli_real_escape_string($conn, $_POST['id_no']);
-    $semester = intval($_POST['semester']);
-
-    $check = $conn->query("SELECT id FROM users WHERE email='$email'");
-    if ($check->num_rows > 0) {
-        $message = "❌ Error: Email already registered!";
-        if ($is_ajax) {
-            echo json_encode(['status' => 'error', 'message' => $message]);
-            exit();
-        }
-    } else {
-        $sql = "INSERT INTO users (name, email, password, id_no, role, semester) VALUES ('$name', '$email', '$password', '$id_no', 'student', '$semester')";
-        if ($conn->query($sql)) {
-            $message = "🟢 Student '$name' enrolled successfully!";
+    // Admin action: stop a live class
+    if (isset($_POST['stop_live'])) {
+        $course_id = intval($_POST['course_id']);
+        $sql_stop = "UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id' AND status='LIVE NOW'";
+        if ($conn->query($sql_stop)) {
+            $message = "🔴 Live Session Terminated successfully!";
             if ($is_ajax) {
+                echo json_encode(['status' => 'success', 'message' => $message, 'course_id' => $course_id]);
+                exit();
+            }
+        } elseif ($is_ajax) {
+            echo json_encode(['status' => 'error', 'message' => 'Could not terminate the session.']);
+            exit();
+        }
+    }
+
+    // Student enrollment action
+    if (isset($_POST['add_student'])) {
+        $name = mysqli_real_escape_string($conn, $_POST['name']);
+        $email = mysqli_real_escape_string($conn, $_POST['email']);
+        $password = mysqli_real_escape_string($conn, $_POST['password']);
+        $id_no = mysqli_real_escape_string($conn, $_POST['id_no']);
+        $semester = intval($_POST['semester']);
+
+        $check = $conn->query("SELECT id FROM users WHERE email='$email'");
+        if ($check->num_rows > 0) {
+            $message = "❌ Error: Email already registered!";
+            if ($is_ajax) {
+                echo json_encode(['status' => 'error', 'message' => $message]);
+                exit();
+            }
+        } else {
+            $sql = "INSERT INTO users (name, email, password, id_no, role, semester) VALUES ('$name', '$email', '$password', '$id_no', 'student', '$semester')";
+            if ($conn->query($sql)) {
+                $message = "🟢 Student '$name' enrolled successfully!";
+                if ($is_ajax) {
+                    echo json_encode([
+                        'status' => 'success',
+                        'message' => $message,
+                        'student' => [
+                            'id' => $conn->insert_id,
+                            'name' => htmlspecialchars($name),
+                            'email' => htmlspecialchars($email),
+                            'id_no' => htmlspecialchars($id_no),
+                            'semester' => $semester,
+                            'active_courses' => 0,
+                            'completed_courses' => 0,
+                        ]
+                    ]);
+                    exit();
+                }
+            } elseif ($is_ajax) {
+                echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+                exit();
+            }
+        }
+    }
+
+    // Course creation action
+    if (isset($_POST['add_course'])) {
+        $course_code = mysqli_real_escape_string($conn, $_POST['course_code']);
+        $title = mysqli_real_escape_string($conn, $_POST['title']);
+        $semester = intval($_POST['semester']);
+        $teacher_id = intval($_POST['teacher_id']);
+
+        $sql = "INSERT INTO courses (course_code, title, semester, teacher_id) VALUES ('$course_code', '$title', '$semester', '$teacher_id')";
+        if ($conn->query($sql)) {
+            $message = "🟢 Course '$course_code' deployed successfully!";
+            if ($is_ajax) {
+                $teacher_name = '';
+                $t_lookup = $conn->query("SELECT name FROM users WHERE id='$teacher_id'");
+                if ($t_lookup && $t_lookup->num_rows > 0) {
+                    $teacher_name = $t_lookup->fetch_assoc()['name'];
+                }
                 echo json_encode([
                     'status' => 'success',
                     'message' => $message,
-                    'student' => [
+                    'course' => [
                         'id' => $conn->insert_id,
-                        'name' => htmlspecialchars($name),
-                        'email' => htmlspecialchars($email),
-                        'id_no' => htmlspecialchars($id_no),
+                        'course_code' => htmlspecialchars($course_code),
+                        'title' => htmlspecialchars($title),
                         'semester' => $semester,
-                        'active_courses' => 0,
-                        'completed_courses' => 0,
+                        'teacher_name' => htmlspecialchars($teacher_name),
                     ]
                 ]);
                 exit();
@@ -72,194 +113,229 @@ if (isset($_POST['add_student'])) {
             exit();
         }
     }
-}
 
-// Course creation action
-if (isset($_POST['add_course'])) {
-    $course_code = mysqli_real_escape_string($conn, $_POST['course_code']);
-    $title = mysqli_real_escape_string($conn, $_POST['title']);
-    $semester = intval($_POST['semester']);
-    $teacher_id = intval($_POST['teacher_id']);
+    // New action: student semester GPA entry & update logic
+    if (isset($_POST['submit_gpa'])) {
+        $student_id = intval($_POST['student_id']);
+        $semester_no = intval($_POST['semester_no']);
+        $gpa = floatval($_POST['gpa']);
 
-    $sql = "INSERT INTO courses (course_code, title, semester, teacher_id) VALUES ('$course_code', '$title', '$semester', '$teacher_id')";
-    if ($conn->query($sql)) {
-        $message = "🟢 Course '$course_code' deployed successfully!";
-        if ($is_ajax) {
-            $teacher_name = '';
-            $t_lookup = $conn->query("SELECT name FROM users WHERE id='$teacher_id'");
-            if ($t_lookup && $t_lookup->num_rows > 0) {
-                $teacher_name = $t_lookup->fetch_assoc()['name'];
-            }
-            echo json_encode([
-                'status' => 'success',
-                'message' => $message,
-                'course' => [
-                    'id' => $conn->insert_id,
-                    'course_code' => htmlspecialchars($course_code),
-                    'title' => htmlspecialchars($title),
-                    'semester' => $semester,
-                    'teacher_name' => htmlspecialchars($teacher_name),
-                ]
-            ]);
-            exit();
-        }
-    } elseif ($is_ajax) {
-        echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
-        exit();
-    }
-}
-
-// New action: student semester GPA entry & update logic
-if (isset($_POST['submit_gpa'])) {
-    $student_id = intval($_POST['student_id']);
-    $semester_no = intval($_POST['semester_no']);
-    $gpa = floatval($_POST['gpa']);
-
-    // ON DUPLICATE KEY UPDATE ensures a given student's specific semester result gets updated instead of duplicated
-    $stmt = $conn->prepare("INSERT INTO student_cgpa_records (student_id, semester_no, gpa) VALUES (?, ?, ?) 
+        // ON DUPLICATE KEY UPDATE ensures a given student's specific semester result gets updated instead of duplicated
+        $stmt = $conn->prepare("INSERT INTO student_cgpa_records (student_id, semester_no, gpa) VALUES (?, ?, ?) 
                             ON DUPLICATE KEY UPDATE gpa = ?");
-    $stmt->bind_param("iidd", $student_id, $semester_no, $gpa, $gpa);
+        $stmt->bind_param("iidd", $student_id, $semester_no, $gpa, $gpa);
 
-    if ($stmt->execute()) {
-        $message = "🟢 GPA Updated Successfully for Student ID: $student_id (Semester $semester_no)!";
-        if ($is_ajax) {
-            echo json_encode(['status' => 'success', 'message' => $message]);
-            exit();
-        }
-    } else {
-        $message = "❌ Error updating GPA: " . $conn->error;
-        if ($is_ajax) {
-            echo json_encode(['status' => 'error', 'message' => $message]);
-            exit();
-        }
-    }
-    $stmt->close();
-}
-
-// Admin action: assign or unassign a teacher for a course
-if (isset($_POST['assign_teacher'])) {
-    $course_id = intval($_POST['course_id']);
-    $teacher_id = isset($_POST['teacher_id']) ? trim($_POST['teacher_id']) : '';
-
-    if ($teacher_id === '') {
-        // Unassign: set teacher_id to NULL
-        $stmt = $conn->prepare("UPDATE courses SET teacher_id = NULL WHERE id = ?");
-        $stmt->bind_param("i", $course_id);
-        $teacher_name = '';
-    } else {
-        $teacher_id = intval($teacher_id);
-        $stmt = $conn->prepare("UPDATE courses SET teacher_id = ? WHERE id = ?");
-        $stmt->bind_param("ii", $teacher_id, $course_id);
-        $t_lookup = $conn->query("SELECT name FROM users WHERE id='$teacher_id' AND role='teacher'");
-        $teacher_name = ($t_lookup && $t_lookup->num_rows > 0) ? $t_lookup->fetch_assoc()['name'] : '';
-    }
-
-    if ($stmt->execute()) {
-        echo json_encode(['status' => 'success', 'message' => '🟢 Faculty assignment updated.', 'teacher_name' => htmlspecialchars($teacher_name)]);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
-    }
-    $stmt->close();
-    exit();
-}
-
-// Admin action: remove (delete) a student permanently
-if (isset($_POST['remove_student'])) {
-    $student_id = intval($_POST['student_id']);
-    $stmt = $conn->prepare("DELETE FROM users WHERE id = ? AND role = 'student'");
-    $stmt->bind_param("i", $student_id);
-    if ($stmt->execute() && $stmt->affected_rows > 0) {
-        echo json_encode(['status' => 'success', 'message' => '🟢 Student removed successfully.']);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Could not remove student (not found).']);
-    }
-    $stmt->close();
-    exit();
-}
-
-// Admin action: promote a student to the next semester
-if (isset($_POST['promote_semester'])) {
-    $student_id = intval($_POST['student_id']);
-    $stmt = $conn->prepare("UPDATE users SET semester = semester + 1 WHERE id = ? AND role = 'student' AND semester < 8");
-    $stmt->bind_param("i", $student_id);
-    if ($stmt->execute()) {
-        $new_sem = $conn->query("SELECT semester FROM users WHERE id='$student_id'")->fetch_assoc()['semester'];
-        echo json_encode(['status' => 'success', 'message' => '🟢 Student promoted successfully.', 'new_semester' => (int) $new_sem]);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
-    }
-    $stmt->close();
-    exit();
-}
-
-// Admin action: enroll (assign) a student into a course — becomes an "active" academic record
-if (isset($_POST['enroll_course'])) {
-    $student_id = intval($_POST['student_id']);
-    $course_id = intval($_POST['course_id']);
-
-    $exists = $conn->query("SELECT id, status FROM academic_records WHERE student_id='$student_id' AND course_id='$course_id' LIMIT 1");
-    if ($exists && $exists->num_rows > 0) {
-        $row = $exists->fetch_assoc();
-        if ($row['status'] === 'completed') {
-            $conn->query("UPDATE academic_records SET status='active' WHERE id='{$row['id']}'");
-            echo json_encode(['status' => 'success', 'message' => '🟢 Course re-activated for student.']);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Student is already enrolled in this course.']);
-        }
-    } else {
-        $stmt = $conn->prepare("INSERT INTO academic_records (student_id, course_id, ct_marks, total_days, present_days, status) VALUES (?, ?, 0, 0, 0, 'active')");
-        $stmt->bind_param("ii", $student_id, $course_id);
         if ($stmt->execute()) {
-            echo json_encode(['status' => 'success', 'message' => '🟢 Course assigned to student.']);
+            $message = "🟢 GPA Updated Successfully for Student ID: $student_id (Semester $semester_no)!";
+            if ($is_ajax) {
+                echo json_encode(['status' => 'success', 'message' => $message]);
+                exit();
+            }
+        } else {
+            $message = "❌ Error updating GPA: " . $conn->error;
+            if ($is_ajax) {
+                echo json_encode(['status' => 'error', 'message' => $message]);
+                exit();
+            }
+        }
+        $stmt->close();
+    }
+
+    // Admin action: assign or unassign a teacher for a course
+    if (isset($_POST['assign_teacher'])) {
+        $course_id = intval($_POST['course_id']);
+        $teacher_id = isset($_POST['teacher_id']) ? trim($_POST['teacher_id']) : '';
+
+        if ($teacher_id === '') {
+            // Unassign: set teacher_id to NULL
+            $stmt = $conn->prepare("UPDATE courses SET teacher_id = NULL WHERE id = ?");
+            $stmt->bind_param("i", $course_id);
+            $teacher_name = '';
+        } else {
+            $teacher_id = intval($teacher_id);
+            $stmt = $conn->prepare("UPDATE courses SET teacher_id = ? WHERE id = ?");
+            $stmt->bind_param("ii", $teacher_id, $course_id);
+            $t_lookup = $conn->query("SELECT name FROM users WHERE id='$teacher_id' AND role='teacher'");
+            $teacher_name = ($t_lookup && $t_lookup->num_rows > 0) ? $t_lookup->fetch_assoc()['name'] : '';
+        }
+
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => '🟢 Faculty assignment updated.', 'teacher_name' => htmlspecialchars($teacher_name)]);
         } else {
             echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
         }
         $stmt->close();
+        exit();
     }
-    exit();
-}
 
-// Admin action: archive (mark completed) a student's course, freeing them up for the next semester
-if (isset($_POST['archive_course'])) {
-    $student_id = intval($_POST['student_id']);
-    $course_id = intval($_POST['course_id']);
-    $stmt = $conn->prepare("UPDATE academic_records SET status='completed' WHERE student_id=? AND course_id=?");
-    $stmt->bind_param("ii", $student_id, $course_id);
-    if ($stmt->execute()) {
-        echo json_encode(['status' => 'success', 'message' => '🟢 Course archived as completed.']);
-    } else {
-        echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+    // Admin action: archive a student — moves them to "Old Students", does NOT delete from the database
+    if (isset($_POST['archive_student'])) {
+        $student_id = intval($_POST['student_id']);
+        $stmt = $conn->prepare("UPDATE users SET archived = 1 WHERE id = ? AND role = 'student'");
+        $stmt->bind_param("i", $student_id);
+        if ($stmt->execute() && $stmt->affected_rows > 0) {
+            echo json_encode(['status' => 'success', 'message' => '🗄️ Student moved to Old Students archive.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Could not archive student (not found).']);
+        }
+        $stmt->close();
+        exit();
     }
-    $stmt->close();
-    exit();
-}
 
-// AJAX fetch: a student's active/completed/available courses (for the "Manage Courses" modal)
-if (isset($_POST['get_student_courses'])) {
-    $student_id = intval($_POST['student_id']);
+    // Admin action: restore a previously archived student back to the active directory
+    if (isset($_POST['restore_student'])) {
+        $student_id = intval($_POST['student_id']);
+        $stmt = $conn->prepare("UPDATE users SET archived = 0 WHERE id = ? AND role = 'student'");
+        $stmt->bind_param("i", $student_id);
+        if ($stmt->execute() && $stmt->affected_rows > 0) {
+            echo json_encode(['status' => 'success', 'message' => '🟢 Student restored to active directory.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Could not restore student (not found).']);
+        }
+        $stmt->close();
+        exit();
+    }
 
-    $active = [];
-    $active_q = $conn->query("
+    // Admin action: edit/update a student's own info (name, email, id_no, semester, optional password)
+    if (isset($_POST['update_student'])) {
+        $student_id = intval($_POST['student_id']);
+        $name = mysqli_real_escape_string($conn, trim($_POST['name']));
+        $email = mysqli_real_escape_string($conn, trim($_POST['email']));
+        $id_no = mysqli_real_escape_string($conn, trim($_POST['id_no']));
+        $semester = intval($_POST['semester']);
+        $password = isset($_POST['password']) ? trim($_POST['password']) : '';
+
+        $check = $conn->query("SELECT id FROM users WHERE email='$email' AND id != $student_id");
+        if ($check && $check->num_rows > 0) {
+            echo json_encode(['status' => 'error', 'message' => '❌ Email already used by another account.']);
+            exit();
+        }
+
+        if ($password !== '') {
+            $stmt = $conn->prepare("UPDATE users SET name=?, email=?, id_no=?, semester=?, password=? WHERE id=? AND role='student'");
+            $stmt->bind_param("sssisi", $name, $email, $id_no, $semester, $password, $student_id);
+        } else {
+            $stmt = $conn->prepare("UPDATE users SET name=?, email=?, id_no=?, semester=? WHERE id=? AND role='student'");
+            $stmt->bind_param("sssii", $name, $email, $id_no, $semester, $student_id);
+        }
+
+        if ($stmt->execute()) {
+            echo json_encode([
+                'status' => 'success',
+                'message' => '🟢 Student information updated.',
+                'student' => [
+                    'id' => $student_id,
+                    'name' => htmlspecialchars($name),
+                    'email' => htmlspecialchars($email),
+                    'id_no' => htmlspecialchars($id_no),
+                    'semester' => $semester,
+                ]
+            ]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+        }
+        $stmt->close();
+        exit();
+    }
+
+    // Admin action: promote a student to the next semester
+    if (isset($_POST['promote_semester'])) {
+        $student_id = intval($_POST['student_id']);
+        $stmt = $conn->prepare("UPDATE users SET semester = semester + 1 WHERE id = ? AND role = 'student' AND semester < 8");
+        $stmt->bind_param("i", $student_id);
+        if ($stmt->execute()) {
+            $new_sem = $conn->query("SELECT semester FROM users WHERE id='$student_id'")->fetch_assoc()['semester'];
+            echo json_encode(['status' => 'success', 'message' => '🟢 Student promoted successfully.', 'new_semester' => (int) $new_sem]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+        }
+        $stmt->close();
+        exit();
+    }
+
+    // Admin action: demote a student to the previous semester
+    if (isset($_POST['demote_semester'])) {
+        $student_id = intval($_POST['student_id']);
+        $stmt = $conn->prepare("UPDATE users SET semester = semester - 1 WHERE id = ? AND role = 'student' AND semester > 1");
+        $stmt->bind_param("i", $student_id);
+        if ($stmt->execute()) {
+            $new_sem = $conn->query("SELECT semester FROM users WHERE id='$student_id'")->fetch_assoc()['semester'];
+            echo json_encode(['status' => 'success', 'message' => '🟡 Student demoted successfully.', 'new_semester' => (int) $new_sem]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+        }
+        $stmt->close();
+        exit();
+    }
+
+    // Admin action: enroll (assign) a student into a course — becomes an "active" academic record
+    if (isset($_POST['enroll_course'])) {
+        $student_id = intval($_POST['student_id']);
+        $course_id = intval($_POST['course_id']);
+
+        $exists = $conn->query("SELECT id, status FROM academic_records WHERE student_id='$student_id' AND course_id='$course_id' LIMIT 1");
+        if ($exists && $exists->num_rows > 0) {
+            $row = $exists->fetch_assoc();
+            if ($row['status'] === 'completed') {
+                $conn->query("UPDATE academic_records SET status='active' WHERE id='{$row['id']}'");
+                echo json_encode(['status' => 'success', 'message' => '🟢 Course re-activated for student.']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Student is already enrolled in this course.']);
+            }
+        } else {
+            $stmt = $conn->prepare("INSERT INTO academic_records (student_id, course_id, ct_marks, total_days, present_days, status) VALUES (?, ?, 0, 0, 0, 'active')");
+            $stmt->bind_param("ii", $student_id, $course_id);
+            if ($stmt->execute()) {
+                echo json_encode(['status' => 'success', 'message' => '🟢 Course assigned to student.']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+            }
+            $stmt->close();
+        }
+        exit();
+    }
+
+    // Admin action: archive (mark completed) a student's course, freeing them up for the next semester
+    if (isset($_POST['archive_course'])) {
+        $student_id = intval($_POST['student_id']);
+        $course_id = intval($_POST['course_id']);
+        $stmt = $conn->prepare("UPDATE academic_records SET status='completed' WHERE student_id=? AND course_id=?");
+        $stmt->bind_param("ii", $student_id, $course_id);
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => '🟢 Course archived as completed.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+        }
+        $stmt->close();
+        exit();
+    }
+
+    // AJAX fetch: a student's active/completed/available courses (for the "Manage Courses" modal)
+    if (isset($_POST['get_student_courses'])) {
+        $student_id = intval($_POST['student_id']);
+
+        $active = [];
+        $active_q = $conn->query("
         SELECT c.id, c.course_code, c.title, c.semester
         FROM academic_records ar JOIN courses c ON c.id = ar.course_id
         WHERE ar.student_id='$student_id' AND ar.status='active'
         ORDER BY c.semester ASC, c.course_code ASC
     ");
-    while ($active_q && $r = $active_q->fetch_assoc())
-        $active[] = $r;
+        while ($active_q && $r = $active_q->fetch_assoc())
+            $active[] = $r;
 
-    $completed = [];
-    $completed_q = $conn->query("
+        $completed = [];
+        $completed_q = $conn->query("
         SELECT c.id, c.course_code, c.title, c.semester
         FROM academic_records ar JOIN courses c ON c.id = ar.course_id
         WHERE ar.student_id='$student_id' AND ar.status='completed'
         ORDER BY c.semester ASC, c.course_code ASC
     ");
-    while ($completed_q && $r = $completed_q->fetch_assoc())
-        $completed[] = $r;
+        while ($completed_q && $r = $completed_q->fetch_assoc())
+            $completed[] = $r;
 
-    $available = [];
-    $available_q = $conn->query("
+        $available = [];
+        $available_q = $conn->query("
         SELECT c.id, c.course_code, c.title, c.semester
         FROM courses c
         WHERE c.id NOT IN (
@@ -267,11 +343,45 @@ if (isset($_POST['get_student_courses'])) {
         )
         ORDER BY c.semester ASC, c.course_code ASC
     ");
-    while ($available_q && $r = $available_q->fetch_assoc())
-        $available[] = $r;
+        while ($available_q && $r = $available_q->fetch_assoc())
+            $available[] = $r;
 
-    echo json_encode(['status' => 'success', 'active' => $active, 'completed' => $completed, 'available' => $available]);
-    exit();
+        echo json_encode(['status' => 'success', 'active' => $active, 'completed' => $completed, 'available' => $available]);
+        exit();
+    }
+
+    // Admin action: permanently remove a course (Active Course Allocation Hub) along with its dependent records
+    if (isset($_POST['remove_course'])) {
+        $course_id = intval($_POST['course_id']);
+        $conn->begin_transaction();
+        try {
+            $conn->query("DELETE FROM online_class_tests WHERE course_id='$course_id'");
+            $conn->query("DELETE FROM academic_records WHERE course_id='$course_id'");
+            $stmt = $conn->prepare("DELETE FROM courses WHERE id = ?");
+            $stmt->bind_param("i", $course_id);
+            $stmt->execute();
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+            $conn->commit();
+            if ($affected > 0) {
+                echo json_encode(['status' => 'success', 'message' => '🟢 Course removed successfully.']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Course not found.']);
+            }
+        } catch (Throwable $e) {
+            $conn->rollback();
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
+        }
+        exit();
+    }
+
+} catch (Throwable $e) {
+    if ($is_ajax) {
+        echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
+        exit();
+    } else {
+        $message = "❌ Error: " . $e->getMessage();
+    }
 }
 
 // Fetch counter data (for dashboard stats)
@@ -285,15 +395,31 @@ $teachers_list = $conn->query("SELECT id, name FROM users WHERE role='teacher' O
 $students_list = $conn->query("
     SELECT u.id, u.name, u.email, u.id_no, u.semester,
         (SELECT COUNT(*) FROM academic_records ar WHERE ar.student_id = u.id AND ar.status = 'active') AS active_courses,
-        (SELECT COUNT(*) FROM academic_records ar WHERE ar.student_id = u.id AND ar.status = 'completed') AS completed_courses
+        (SELECT COUNT(*) FROM academic_records ar WHERE ar.student_id = u.id AND ar.status = 'completed') AS completed_courses,
+        (SELECT ROUND(AVG(scr.gpa), 2) FROM student_cgpa_records scr WHERE scr.student_id = u.id) AS cgpa
     FROM users u
-    WHERE u.role = 'student'
+    WHERE u.role = 'student' AND u.archived = 0
     ORDER BY u.semester ASC, u.name ASC
 ");
 $students_array = [];
 if ($students_list) {
     while ($s = $students_list->fetch_assoc()) {
+        $s['cgpa'] = $s['cgpa'] !== null ? (float) $s['cgpa'] : null;
         $students_array[] = $s;
+    }
+}
+
+// Old Students (archived) — kept in the database, just hidden from the active directory
+$old_students_list = $conn->query("
+    SELECT u.id, u.name, u.email, u.id_no, u.semester
+    FROM users u
+    WHERE u.role = 'student' AND u.archived = 1
+    ORDER BY u.name ASC
+");
+$old_students_array = [];
+if ($old_students_list) {
+    while ($s = $old_students_list->fetch_assoc()) {
+        $old_students_array[] = $s;
     }
 }
 
@@ -623,7 +749,7 @@ $courses_list = $conn->query("
         </div>
 
         <aside id="sidebar"
-            class="sidebar-shell fixed md:static inset-y-0 left-0 z-40 w-72 p-6 flex flex-col justify-between shadow-xl transform -translate-x-full md:translate-x-0 transition-transform duration-300">
+            class="sidebar-shell fixed md:sticky inset-y-0 md:inset-y-auto md:top-0 left-0 z-40 w-72 h-screen p-6 flex flex-col justify-between shadow-xl transform -translate-x-full md:translate-x-0 transition-transform duration-300 overflow-y-auto">
             <div class="space-y-8">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3 text-white">
@@ -652,6 +778,10 @@ $courses_list = $conn->query("
                         <a href="#student-section" onclick="toggleMobileSidebar(false)"
                             class="sidebar-link flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition">
                             <span class="sidebar-icon-box">🎓</span> <span>Students Directory</span>
+                        </a>
+                        <a href="#old-student-section" onclick="toggleMobileSidebar(false)"
+                            class="sidebar-link flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition">
+                            <span class="sidebar-icon-box">🗄️</span> <span>Old Students</span>
                         </a>
                         <a href="#course-section" onclick="toggleMobileSidebar(false)"
                             class="sidebar-link flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition">
@@ -891,10 +1021,17 @@ $courses_list = $conn->query("
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <div>
-                                <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Student SQL
-                                    ID</label>
-                                <input type="number" name="student_id" required placeholder="e.g., 5"
+                                <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Select
+                                    Student</label>
+                                <select name="student_id" required id="gpa-student-select"
                                     class="w-full input-field p-3 rounded-xl text-sm transition">
+                                    <option value="">-- Select a Student --</option>
+                                    <?php
+                                    foreach ($students_array as $s) {
+                                        echo "<option value='" . $s['id'] . "'>#" . $s['id'] . " — " . htmlspecialchars($s['name']) . " (" . htmlspecialchars($s['id_no']) . ", Sem " . (int) $s['semester'] . ")</option>";
+                                    }
+                                    ?>
+                                </select>
                             </div>
                             <div>
                                 <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Target
@@ -942,6 +1079,7 @@ $courses_list = $conn->query("
                                 <th class="p-4">Semester map</th>
                                 <th class="p-4">Faculty Member</th>
                                 <th class="p-4 text-center">Live Monitoring / Command</th>
+                                <th class="p-4 text-center">Actions</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y" id="course-table-body" style="border-color: var(--border-card);">
@@ -990,11 +1128,17 @@ $courses_list = $conn->query("
                                                 <span class="text-muted-c text-sm font-medium">Idle Mode</span>
                                             <?php } ?>
                                         </td>
+                                        <td class="p-4 text-center">
+                                            <button type="button"
+                                                onclick="confirmRemoveCourse(<?php echo $c['id']; ?>, '<?php echo htmlspecialchars(addslashes($c['course_code'])); ?>')"
+                                                class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">🗑️
+                                                Remove</button>
+                                        </td>
                                     </tr>
                                     <?php
                                 }
                             } else {
-                                echo "<tr id='no-courses-row'><td colspan='5' class='text-center p-8 text-muted-c italic text-sm'>No data mapping loops registered yet.</td></tr>";
+                                echo "<tr id='no-courses-row'><td colspan='6' class='text-center p-8 text-muted-c italic text-sm'>No data mapping loops registered yet.</td></tr>";
                             }
                             ?>
                         </tbody>
@@ -1030,6 +1174,7 @@ $courses_list = $conn->query("
                                 <th class="p-4">Student</th>
                                 <th class="p-4">ID No</th>
                                 <th class="p-4">Semester</th>
+                                <th class="p-4">CGPA</th>
                                 <th class="p-4">Courses</th>
                                 <th class="p-4 text-center">Actions</th>
                             </tr>
@@ -1038,44 +1183,70 @@ $courses_list = $conn->query("
                             <?php
                             if (count($students_array) > 0) {
                                 foreach ($students_array as $s) {
-                                    $search_blob = strtolower($s['name'] . ' ' . $s['email'] . ' ' . $s['id_no']);
+                                    $search_blob = strtolower($s['name'] . ' ' . $s['email'] . ' ' . $s['id_no'] . ' ' . $s['id']);
+                                    $cgpa_display = $s['cgpa'] !== null ? number_format($s['cgpa'], 2) : '—';
                                     ?>
                                     <tr class="transition" data-search="<?php echo htmlspecialchars($search_blob); ?>"
-                                        data-semester="<?php echo (int) $s['semester']; ?>" data-student-row="<?php echo $s['id']; ?>">
+                                        data-semester="<?php echo (int) $s['semester']; ?>"
+                                        data-student-row="<?php echo $s['id']; ?>">
                                         <td class="p-4">
-                                            <p class="font-semibold text-main"><?php echo htmlspecialchars($s['name']); ?></p>
-                                            <p class="text-xs text-muted-c"><?php echo htmlspecialchars($s['email']); ?></p>
+                                            <p class="font-semibold text-main" data-field-name>
+                                                <?php echo htmlspecialchars($s['name']); ?>
+                                            </p>
+                                            <p class="text-xs text-muted-c" data-field-email>
+                                                <?php echo htmlspecialchars($s['email']); ?>
+                                            </p>
+                                            <p class="text-[11px] font-mono gold-accent font-bold mt-0.5" data-field-sqlid>
+                                                SQL ID: #<?php echo (int) $s['id']; ?>
+                                            </p>
                                         </td>
-                                        <td class="p-4 font-mono text-xs text-muted-c">
+                                        <td class="p-4 font-mono text-xs text-muted-c" data-field-idno>
                                             <?php echo htmlspecialchars($s['id_no']); ?>
                                         </td>
                                         <td class="p-4">
-                                            <span class="input-field font-bold px-2.5 py-1 rounded-md text-xs" data-sem-badge>Sem
+                                            <span class="input-field font-bold px-2.5 py-1 rounded-md text-xs"
+                                                data-sem-badge>Sem
                                                 <?php echo (int) $s['semester']; ?></span>
+                                        </td>
+                                        <td class="p-4">
+                                            <span class="font-bold gold-accent text-sm"
+                                                data-field-cgpa><?php echo $cgpa_display; ?></span>
                                         </td>
                                         <td class="p-4 text-xs">
                                             <span class="emerald-text font-bold"><?php echo (int) $s['active_courses']; ?>
                                                 active</span>
-                                            <span class="text-muted-c"> · <?php echo (int) $s['completed_courses']; ?> archived</span>
+                                            <span class="text-muted-c"> · <?php echo (int) $s['completed_courses']; ?>
+                                                archived</span>
                                         </td>
                                         <td class="p-4">
                                             <div class="flex items-center justify-center gap-2 flex-wrap">
-                                                <button type="button" onclick="openManageCourses(<?php echo $s['id']; ?>, '<?php echo htmlspecialchars(addslashes($s['name'])); ?>')"
+                                                <button type="button"
+                                                    onclick='openEditStudent(<?php echo json_encode(["id" => $s['id'], "name" => $s['name'], "email" => $s['email'], "id_no" => $s['id_no'], "semester" => (int) $s['semester']]); ?>)'
+                                                    class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">✏️
+                                                    Edit</button>
+                                                <button type="button"
+                                                    onclick="openManageCourses(<?php echo $s['id']; ?>, '<?php echo htmlspecialchars(addslashes($s['name'])); ?>')"
                                                     class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">📚
                                                     Manage</button>
-                                                <button type="button" onclick="confirmPromote(<?php echo $s['id']; ?>, '<?php echo htmlspecialchars(addslashes($s['name'])); ?>')"
+                                                <button type="button"
+                                                    onclick="confirmPromote(<?php echo $s['id']; ?>, '<?php echo htmlspecialchars(addslashes($s['name'])); ?>')"
                                                     class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">⬆️
                                                     Promote</button>
-                                                <button type="button" onclick="confirmRemoveStudent(<?php echo $s['id']; ?>, '<?php echo htmlspecialchars(addslashes($s['name'])); ?>')"
-                                                    class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">🗑️
-                                                    Remove</button>
+                                                <button type="button"
+                                                    onclick="confirmDemote(<?php echo $s['id']; ?>, '<?php echo htmlspecialchars(addslashes($s['name'])); ?>')"
+                                                    class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">⬇️
+                                                    Demote</button>
+                                                <button type="button"
+                                                    onclick="confirmArchiveStudent(<?php echo $s['id']; ?>, '<?php echo htmlspecialchars(addslashes($s['name'])); ?>')"
+                                                    class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">🗄️
+                                                    Archive</button>
                                             </div>
                                         </td>
                                     </tr>
                                     <?php
                                 }
                             } else {
-                                echo "<tr id='no-students-row'><td colspan='5' class='text-center p-8 text-muted-c italic text-sm'>No students enrolled yet.</td></tr>";
+                                echo "<tr id='no-students-row'><td colspan='6' class='text-center p-8 text-muted-c italic text-sm'>No students enrolled yet.</td></tr>";
                             }
                             ?>
                         </tbody>
@@ -1085,9 +1256,68 @@ $courses_list = $conn->query("
                 </div>
             </div>
 
+            <!-- Old Students (Archived) Directory -->
+            <div id="old-student-section" class="card card-lg-shadow rounded-2xl overflow-hidden">
+                <div class="p-5 sm:p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                    style="border-color: var(--border-card);">
+                    <div>
+                        <h4 class="text-sm font-black uppercase text-muted-c tracking-wider font-display">🗄️ Old
+                            Students (Archived)</h4>
+                        <p class="text-xs text-muted-c mt-0.5">These accounts and records are kept — not deleted —
+                            and can be restored any time.</p>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm border-collapse data-table">
+                        <thead>
+                            <tr class="border-b text-muted-c font-bold uppercase tracking-wider text-xs"
+                                style="border-color: var(--border-card);">
+                                <th class="p-4">Student</th>
+                                <th class="p-4">ID No</th>
+                                <th class="p-4">Last Semester</th>
+                                <th class="p-4 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y" id="old-student-table-body" style="border-color: var(--border-card);">
+                            <?php
+                            if (count($old_students_array) > 0) {
+                                foreach ($old_students_array as $s) {
+                                    ?>
+                                    <tr data-old-student-row="<?php echo $s['id']; ?>">
+                                        <td class="p-4">
+                                            <p class="font-semibold text-main"><?php echo htmlspecialchars($s['name']); ?></p>
+                                            <p class="text-xs text-muted-c"><?php echo htmlspecialchars($s['email']); ?></p>
+                                        </td>
+                                        <td class="p-4 font-mono text-xs text-muted-c">
+                                            <?php echo htmlspecialchars($s['id_no']); ?>
+                                        </td>
+                                        <td class="p-4">
+                                            <span class="input-field font-bold px-2.5 py-1 rounded-md text-xs">Sem
+                                                <?php echo (int) $s['semester']; ?></span>
+                                        </td>
+                                        <td class="p-4 text-center">
+                                            <button type="button"
+                                                onclick="confirmRestoreStudent(<?php echo $s['id']; ?>, '<?php echo htmlspecialchars(addslashes($s['name'])); ?>')"
+                                                class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">♻️
+                                                Restore</button>
+                                        </td>
+                                    </tr>
+                                    <?php
+                                }
+                            } else {
+                                echo "<tr id='no-old-students-row'><td colspan='4' class='text-center p-8 text-muted-c italic text-sm'>No archived students.</td></tr>";
+                            }
+                            ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- Manage Courses modal -->
-            <div id="manage-courses-modal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4">
-                <div class="card card-lg-shadow rounded-2xl p-6 sm:p-7 max-w-lg w-full space-y-5 max-h-[85vh] overflow-y-auto">
+            <div id="manage-courses-modal"
+                class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4">
+                <div
+                    class="card card-lg-shadow rounded-2xl p-6 sm:p-7 max-w-lg w-full space-y-5 max-h-[85vh] overflow-y-auto">
                     <div class="flex items-start justify-between">
                         <div>
                             <h3 class="font-display text-lg font-semibold text-main">Manage Courses</h3>
@@ -1112,12 +1342,71 @@ $courses_list = $conn->query("
                         <h4 class="text-xs font-black uppercase gold-accent tracking-wider mb-2">➕ Assign New Course
                         </h4>
                         <div class="flex flex-col sm:flex-row gap-2.5">
-                            <select id="manage-available-select" class="w-full input-field p-2.5 rounded-xl text-sm"></select>
+                            <select id="manage-available-select"
+                                class="w-full input-field p-2.5 rounded-xl text-sm"></select>
                             <button type="button" onclick="enrollSelectedCourse()"
                                 class="gold-bg hover:opacity-90 font-bold px-4 py-2.5 rounded-xl text-sm transition shadow-md cursor-pointer whitespace-nowrap"
                                 style="color:#3d0510;">Assign</button>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Edit Student modal -->
+            <div id="edit-student-modal"
+                class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4">
+                <div class="card card-lg-shadow rounded-2xl p-6 sm:p-7 max-w-md w-full space-y-5">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-display text-lg font-semibold text-main">Edit Student</h3>
+                            <p class="text-xs text-muted-c mt-0.5">Update this student's account information</p>
+                        </div>
+                        <button onclick="closeEditStudent()"
+                            class="text-muted-c hover:opacity-70 text-xl cursor-pointer leading-none">✕</button>
+                    </div>
+                    <form id="form-edit-student" class="space-y-4">
+                        <input type="hidden" id="edit-student-id">
+                        <div>
+                            <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Full Name</label>
+                            <input type="text" id="edit-student-name" required
+                                class="w-full input-field p-3 rounded-xl text-sm transition">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Institutional
+                                Email</label>
+                            <input type="email" id="edit-student-email" required
+                                class="w-full input-field p-3 rounded-xl text-sm transition">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Student ID
+                                    No</label>
+                                <input type="text" id="edit-student-idno" required
+                                    class="w-full input-field p-3 rounded-xl text-sm transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Semester</label>
+                                <select id="edit-student-semester" required
+                                    class="w-full input-field p-3 rounded-xl text-sm transition">
+                                    <?php for ($i = 1; $i <= 8; $i++)
+                                        echo "<option value='$i'>Semester $i</option>"; ?>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">New Password
+                                <span class="normal-case font-medium">(leave blank to keep unchanged)</span></label>
+                            <input type="password" id="edit-student-password" placeholder="••••••••"
+                                class="w-full input-field p-3 rounded-xl text-sm transition">
+                        </div>
+                        <div class="flex justify-end gap-2.5 pt-1">
+                            <button type="button" onclick="closeEditStudent()"
+                                class="px-5 py-2.5 rounded-xl text-sm font-bold border border-current text-muted-c hover:opacity-70 transition cursor-pointer">Cancel</button>
+                            <button type="submit"
+                                class="gold-bg hover:opacity-90 font-bold px-5 py-2.5 rounded-xl text-sm transition shadow-md cursor-pointer"
+                                style="color:#3d0510;">Save Changes</button>
+                        </div>
+                    </form>
                 </div>
             </div>
 
@@ -1303,33 +1592,47 @@ $courses_list = $conn->query("
 
         const teachersData = <?php echo json_encode($teachers_array); ?>;
         const studentsData = <?php echo json_encode($students_array); ?>;
+        const oldStudentsData = <?php echo json_encode($old_students_array); ?>;
 
         function addStudentRowToTable(s) {
             const noRow = document.getElementById('no-students-row');
             if (noRow) noRow.remove();
 
+            const gpaSelect = document.getElementById('gpa-student-select');
+            if (gpaSelect) {
+                const opt = document.createElement('option');
+                opt.value = s.id;
+                opt.textContent = `#${s.id} — ${s.name} (${s.id_no}, Sem ${s.semester})`;
+                gpaSelect.appendChild(opt);
+            }
+
             studentsData.push(s);
 
             const tbody = document.getElementById('student-table-body');
             const tr = document.createElement('tr');
-            const searchBlob = `${s.name} ${s.email} ${s.id_no}`.toLowerCase();
+            const searchBlob = `${s.name} ${s.email} ${s.id_no} ${s.id}`.toLowerCase();
             tr.className = 'transition';
             tr.setAttribute('data-search', searchBlob);
             tr.setAttribute('data-semester', s.semester);
             tr.setAttribute('data-student-row', s.id);
+            const cgpaDisplay = (s.cgpa !== null && s.cgpa !== undefined) ? Number(s.cgpa).toFixed(2) : '—';
             tr.innerHTML = `
                 <td class="p-4">
-                    <p class="font-semibold text-main">${s.name}</p>
-                    <p class="text-xs text-muted-c">${s.email}</p>
+                    <p class="font-semibold text-main" data-field-name>${s.name}</p>
+                    <p class="text-xs text-muted-c" data-field-email>${s.email}</p>
+                    <p class="text-[11px] font-mono gold-accent font-bold mt-0.5" data-field-sqlid>SQL ID: #${s.id}</p>
                 </td>
-                <td class="p-4 font-mono text-xs text-muted-c">${s.id_no}</td>
+                <td class="p-4 font-mono text-xs text-muted-c" data-field-idno>${s.id_no}</td>
                 <td class="p-4"><span class="input-field font-bold px-2.5 py-1 rounded-md text-xs" data-sem-badge>Sem ${s.semester}</span></td>
-                <td class="p-4 text-xs"><span class="emerald-text font-bold">0 active</span><span class="text-muted-c"> · 0 archived</span></td>
+                <td class="p-4"><span class="font-bold gold-accent text-sm" data-field-cgpa>${cgpaDisplay}</span></td>
+                <td class="p-4 text-xs"><span class="emerald-text font-bold">${s.active_courses || 0} active</span><span class="text-muted-c"> · ${s.completed_courses || 0} archived</span></td>
                 <td class="p-4">
                     <div class="flex items-center justify-center gap-2 flex-wrap">
+                        <button type="button" onclick='openEditStudent(${JSON.stringify({ id: s.id, name: s.name, email: s.email, id_no: s.id_no, semester: s.semester })})' class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">✏️ Edit</button>
                         <button type="button" onclick="openManageCourses(${s.id}, '${s.name.replace(/'/g, "\\'")}')" class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">📚 Manage</button>
                         <button type="button" onclick="confirmPromote(${s.id}, '${s.name.replace(/'/g, "\\'")}')" class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">⬆️ Promote</button>
-                        <button type="button" onclick="confirmRemoveStudent(${s.id}, '${s.name.replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">🗑️ Remove</button>
+                        <button type="button" onclick="confirmDemote(${s.id}, '${s.name.replace(/'/g, "\\'")}')" class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">⬇️ Demote</button>
+                        <button type="button" onclick="confirmArchiveStudent(${s.id}, '${s.name.replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">🗄️ Archive</button>
                     </div>
                 </td>
             `;
@@ -1361,6 +1664,7 @@ $courses_list = $conn->query("
                 <td class="p-4"><span class="input-field font-bold px-2.5 py-1 rounded-md text-xs">Sem ${course.semester}</span></td>
                 <td class="p-4" data-teacher-cell data-course-id="${course.id || ''}">${buildTeacherSelectHTML(course.id || '', course.teacher_name)}</td>
                 <td class="p-4 text-center"><span class="text-muted-c text-sm font-medium">Idle Mode</span></td>
+                <td class="p-4 text-center"><button type="button" onclick="confirmRemoveCourse(${course.id || ''}, '${(course.course_code || '').replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">🗑️ Remove</button></td>
             `;
             tbody.appendChild(tr);
         }
@@ -1379,6 +1683,35 @@ $courses_list = $conn->query("
             } catch (err) {
                 console.error(err);
                 showToast('Network error while updating faculty assignment.', 'error');
+            }
+        }
+
+        /* ---------- Remove a course entirely (Active Course Allocation Hub) ---------- */
+        function confirmRemoveCourse(courseId, code) {
+            openConfirmModal(`Permanently remove course ${code}? This also deletes its enrollment and live-session records. This cannot be undone.`, () => {
+                removeCourse(courseId);
+            });
+        }
+        async function removeCourse(courseId) {
+            const formData = new FormData();
+            formData.append('remove_course', '1');
+            formData.append('course_id', courseId);
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
+                if (result.status === 'success') {
+                    const cell = document.querySelector(`[data-teacher-cell][data-course-id="${courseId}"]`);
+                    const row = cell ? cell.closest('tr') : null;
+                    if (row) row.remove();
+                    const tbody = document.getElementById('course-table-body');
+                    if (tbody && tbody.children.length === 0) {
+                        tbody.innerHTML = "<tr id='no-courses-row'><td colspan='6' class='text-center p-8 text-muted-c italic text-sm'>No data mapping loops registered yet.</td></tr>";
+                    }
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Network error while removing course.', 'error');
             }
         }
 
@@ -1437,15 +1770,15 @@ $courses_list = $conn->query("
             }
         }
 
-        /* ---------- Remove student ---------- */
-        function confirmRemoveStudent(studentId, name) {
-            openConfirmModal(`Permanently remove ${name}? This deletes their account, attendance, and submission records. This cannot be undone.`, () => {
-                removeStudent(studentId);
+        /* ---------- Demote student to previous semester ---------- */
+        function confirmDemote(studentId, name) {
+            openConfirmModal(`Demote ${name} back to their previous semester? This does not remove any of their assigned courses.`, () => {
+                demoteStudent(studentId);
             });
         }
-        async function removeStudent(studentId) {
+        async function demoteStudent(studentId) {
             const formData = new FormData();
-            formData.append('remove_student', '1');
+            formData.append('demote_semester', '1');
             formData.append('student_id', studentId);
             try {
                 const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
@@ -1453,14 +1786,174 @@ $courses_list = $conn->query("
                 showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
                 if (result.status === 'success') {
                     const row = document.querySelector(`tr[data-student-row="${studentId}"]`);
-                    if (row) row.remove();
-                    const idx = studentsData.findIndex(s => s.id == studentId);
-                    if (idx > -1) studentsData.splice(idx, 1);
+                    if (row) {
+                        row.setAttribute('data-semester', result.new_semester);
+                        row.querySelector('[data-sem-badge]').textContent = `Sem ${result.new_semester}`;
+                    }
+                    const rec = studentsData.find(s => s.id == studentId);
+                    if (rec) rec.semester = result.new_semester;
                     renderSemesterStat();
                 }
             } catch (err) {
                 console.error(err);
-                showToast('Network error while removing student.', 'error');
+                showToast('Network error while demoting student.', 'error');
+            }
+        }
+
+        /* ---------- Edit student info (name, email, ID No, semester, password) ---------- */
+        function openEditStudent(s) {
+            document.getElementById('edit-student-id').value = s.id;
+            document.getElementById('edit-student-name').value = s.name;
+            document.getElementById('edit-student-email').value = s.email;
+            document.getElementById('edit-student-idno').value = s.id_no;
+            document.getElementById('edit-student-semester').value = s.semester;
+            document.getElementById('edit-student-password').value = '';
+            const modal = document.getElementById('edit-student-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+        function closeEditStudent() {
+            const modal = document.getElementById('edit-student-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }
+        document.getElementById('form-edit-student').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const studentId = document.getElementById('edit-student-id').value;
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            const formData = new FormData();
+            formData.append('update_student', '1');
+            formData.append('student_id', studentId);
+            formData.append('name', document.getElementById('edit-student-name').value);
+            formData.append('email', document.getElementById('edit-student-email').value);
+            formData.append('id_no', document.getElementById('edit-student-idno').value);
+            formData.append('semester', document.getElementById('edit-student-semester').value);
+            formData.append('password', document.getElementById('edit-student-password').value);
+
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
+                if (result.status === 'success') {
+                    applyStudentEditToRow(result.student);
+                    closeEditStudent();
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Network error while updating student.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = originalText;
+            }
+        });
+        function applyStudentEditToRow(s) {
+            const row = document.querySelector(`tr[data-student-row="${s.id}"]`);
+            if (row) {
+                row.querySelector('[data-field-name]').textContent = s.name;
+                row.querySelector('[data-field-email]').textContent = s.email;
+                row.querySelector('[data-field-idno]').textContent = s.id_no;
+                row.querySelector('[data-sem-badge]').textContent = `Sem ${s.semester}`;
+                row.setAttribute('data-semester', s.semester);
+                row.setAttribute('data-search', `${s.name} ${s.email} ${s.id_no} ${s.id}`.toLowerCase());
+            }
+            const rec = studentsData.find(r => r.id == s.id);
+            if (rec) { rec.name = s.name; rec.email = s.email; rec.id_no = s.id_no; rec.semester = s.semester; }
+            renderSemesterStat();
+        }
+
+        /* ---------- Archive student (move to Old Students, NOT a delete) ---------- */
+        function confirmArchiveStudent(studentId, name) {
+            openConfirmModal(`Move ${name} to the Old Students archive? Their account and academic records are preserved (not deleted) and can be restored any time.`, () => {
+                archiveStudent(studentId);
+            });
+        }
+        async function archiveStudent(studentId) {
+            const formData = new FormData();
+            formData.append('archive_student', '1');
+            formData.append('student_id', studentId);
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
+                if (result.status === 'success') {
+                    moveStudentRowToArchive(studentId);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Network error while archiving student.', 'error');
+            }
+        }
+        function moveStudentRowToArchive(studentId) {
+            const rec = studentsData.find(s => s.id == studentId);
+            const row = document.querySelector(`tr[data-student-row="${studentId}"]`);
+            if (row) row.remove();
+            const idx = studentsData.findIndex(s => s.id == studentId);
+            if (idx > -1) studentsData.splice(idx, 1);
+            renderSemesterStat();
+
+            if (!rec) return;
+            oldStudentsData.push(rec);
+            const noOldRow = document.getElementById('no-old-students-row');
+            if (noOldRow) noOldRow.remove();
+            const tbody = document.getElementById('old-student-table-body');
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-old-student-row', studentId);
+            tr.innerHTML = `
+                <td class="p-4">
+                    <p class="font-semibold text-main">${rec.name}</p>
+                    <p class="text-xs text-muted-c">${rec.email}</p>
+                </td>
+                <td class="p-4 font-mono text-xs text-muted-c">${rec.id_no}</td>
+                <td class="p-4"><span class="input-field font-bold px-2.5 py-1 rounded-md text-xs">Sem ${rec.semester}</span></td>
+                <td class="p-4 text-center">
+                    <button type="button" onclick="confirmRestoreStudent(${studentId}, '${rec.name.replace(/'/g, "\\'")}')" class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">♻️ Restore</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        /* ---------- Restore an archived student back to the active directory ---------- */
+        function confirmRestoreStudent(studentId, name) {
+            openConfirmModal(`Restore ${name} back to the active Students Directory?`, () => {
+                restoreStudent(studentId);
+            });
+        }
+        async function restoreStudent(studentId) {
+            const formData = new FormData();
+            formData.append('restore_student', '1');
+            formData.append('student_id', studentId);
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
+                if (result.status === 'success') {
+                    moveStudentRowToActive(studentId);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Network error while restoring student.', 'error');
+            }
+        }
+        function moveStudentRowToActive(studentId) {
+            const row = document.querySelector(`tr[data-old-student-row="${studentId}"]`);
+            const rec = oldStudentsData.find(s => s.id == studentId);
+            if (row) row.remove();
+            const oIdx = oldStudentsData.findIndex(s => s.id == studentId);
+            if (oIdx > -1) oldStudentsData.splice(oIdx, 1);
+
+            const oldTbody = document.getElementById('old-student-table-body');
+            if (oldTbody && oldTbody.children.length === 0) {
+                oldTbody.innerHTML = "<tr id='no-old-students-row'><td colspan='4' class='text-center p-8 text-muted-c italic text-sm'>No archived students.</td></tr>";
+            }
+
+            if (rec) {
+                rec.active_courses = rec.active_courses || 0;
+                rec.completed_courses = rec.completed_courses || 0;
+                addStudentRowToTable(rec);
             }
         }
 
@@ -1609,7 +2102,7 @@ $courses_list = $conn->query("
             });
 
             <?php if ($message && !$is_ajax): ?>
-                showToast(<?php echo json_encode(preg_replace('/^[^\w]*/u', '', strip_tags($message))); ?>, <?php echo strpos($message, '❌') === 0 ? "'error'" : "'success'"; ?>);
+            showToast(<?php echo json_encode(preg_replace('/^[^\w]*/u', '', strip_tags($message))); ?>, <?php echo strpos($message, '❌') === 0 ? "'error'" : "'success'"; ?>);
         <?php endif; ?>
         });
     </script>
