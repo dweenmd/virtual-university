@@ -44,6 +44,8 @@ $tables = [
         ct_marks INT DEFAULT 0,
         total_days INT DEFAULT 0,
         present_days INT DEFAULT 0,
+        status ENUM('active', 'completed') NOT NULL DEFAULT 'active',
+        UNIQUE KEY uq_student_course (student_id, course_id),
         FOREIGN KEY (student_id) REFERENCES users(id) ON DELETE CASCADE,
         FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
     )",

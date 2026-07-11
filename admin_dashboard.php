@@ -52,7 +52,19 @@ if (isset($_POST['add_student'])) {
         if ($conn->query($sql)) {
             $message = "🟢 Student '$name' enrolled successfully!";
             if ($is_ajax) {
-                echo json_encode(['status' => 'success', 'message' => $message]);
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => $message,
+                    'student' => [
+                        'id' => $conn->insert_id,
+                        'name' => htmlspecialchars($name),
+                        'email' => htmlspecialchars($email),
+                        'id_no' => htmlspecialchars($id_no),
+                        'semester' => $semester,
+                        'active_courses' => 0,
+                        'completed_courses' => 0,
+                    ]
+                ]);
                 exit();
             }
         } elseif ($is_ajax) {
@@ -82,6 +94,7 @@ if (isset($_POST['add_course'])) {
                 'status' => 'success',
                 'message' => $message,
                 'course' => [
+                    'id' => $conn->insert_id,
                     'course_code' => htmlspecialchars($course_code),
                     'title' => htmlspecialchars($title),
                     'semester' => $semester,
@@ -123,12 +136,186 @@ if (isset($_POST['submit_gpa'])) {
     $stmt->close();
 }
 
+// Admin action: assign or unassign a teacher for a course
+if (isset($_POST['assign_teacher'])) {
+    $course_id = intval($_POST['course_id']);
+    $teacher_id = isset($_POST['teacher_id']) ? trim($_POST['teacher_id']) : '';
+
+    if ($teacher_id === '') {
+        // Unassign: set teacher_id to NULL
+        $stmt = $conn->prepare("UPDATE courses SET teacher_id = NULL WHERE id = ?");
+        $stmt->bind_param("i", $course_id);
+        $teacher_name = '';
+    } else {
+        $teacher_id = intval($teacher_id);
+        $stmt = $conn->prepare("UPDATE courses SET teacher_id = ? WHERE id = ?");
+        $stmt->bind_param("ii", $teacher_id, $course_id);
+        $t_lookup = $conn->query("SELECT name FROM users WHERE id='$teacher_id' AND role='teacher'");
+        $teacher_name = ($t_lookup && $t_lookup->num_rows > 0) ? $t_lookup->fetch_assoc()['name'] : '';
+    }
+
+    if ($stmt->execute()) {
+        echo json_encode(['status' => 'success', 'message' => '🟢 Faculty assignment updated.', 'teacher_name' => htmlspecialchars($teacher_name)]);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+    }
+    $stmt->close();
+    exit();
+}
+
+// Admin action: remove (delete) a student permanently
+if (isset($_POST['remove_student'])) {
+    $student_id = intval($_POST['student_id']);
+    $stmt = $conn->prepare("DELETE FROM users WHERE id = ? AND role = 'student'");
+    $stmt->bind_param("i", $student_id);
+    if ($stmt->execute() && $stmt->affected_rows > 0) {
+        echo json_encode(['status' => 'success', 'message' => '🟢 Student removed successfully.']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Could not remove student (not found).']);
+    }
+    $stmt->close();
+    exit();
+}
+
+// Admin action: promote a student to the next semester
+if (isset($_POST['promote_semester'])) {
+    $student_id = intval($_POST['student_id']);
+    $stmt = $conn->prepare("UPDATE users SET semester = semester + 1 WHERE id = ? AND role = 'student' AND semester < 8");
+    $stmt->bind_param("i", $student_id);
+    if ($stmt->execute()) {
+        $new_sem = $conn->query("SELECT semester FROM users WHERE id='$student_id'")->fetch_assoc()['semester'];
+        echo json_encode(['status' => 'success', 'message' => '🟢 Student promoted successfully.', 'new_semester' => (int) $new_sem]);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+    }
+    $stmt->close();
+    exit();
+}
+
+// Admin action: enroll (assign) a student into a course — becomes an "active" academic record
+if (isset($_POST['enroll_course'])) {
+    $student_id = intval($_POST['student_id']);
+    $course_id = intval($_POST['course_id']);
+
+    $exists = $conn->query("SELECT id, status FROM academic_records WHERE student_id='$student_id' AND course_id='$course_id' LIMIT 1");
+    if ($exists && $exists->num_rows > 0) {
+        $row = $exists->fetch_assoc();
+        if ($row['status'] === 'completed') {
+            $conn->query("UPDATE academic_records SET status='active' WHERE id='{$row['id']}'");
+            echo json_encode(['status' => 'success', 'message' => '🟢 Course re-activated for student.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Student is already enrolled in this course.']);
+        }
+    } else {
+        $stmt = $conn->prepare("INSERT INTO academic_records (student_id, course_id, ct_marks, total_days, present_days, status) VALUES (?, ?, 0, 0, 0, 'active')");
+        $stmt->bind_param("ii", $student_id, $course_id);
+        if ($stmt->execute()) {
+            echo json_encode(['status' => 'success', 'message' => '🟢 Course assigned to student.']);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+        }
+        $stmt->close();
+    }
+    exit();
+}
+
+// Admin action: archive (mark completed) a student's course, freeing them up for the next semester
+if (isset($_POST['archive_course'])) {
+    $student_id = intval($_POST['student_id']);
+    $course_id = intval($_POST['course_id']);
+    $stmt = $conn->prepare("UPDATE academic_records SET status='completed' WHERE student_id=? AND course_id=?");
+    $stmt->bind_param("ii", $student_id, $course_id);
+    if ($stmt->execute()) {
+        echo json_encode(['status' => 'success', 'message' => '🟢 Course archived as completed.']);
+    } else {
+        echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+    }
+    $stmt->close();
+    exit();
+}
+
+// AJAX fetch: a student's active/completed/available courses (for the "Manage Courses" modal)
+if (isset($_POST['get_student_courses'])) {
+    $student_id = intval($_POST['student_id']);
+
+    $active = [];
+    $active_q = $conn->query("
+        SELECT c.id, c.course_code, c.title, c.semester
+        FROM academic_records ar JOIN courses c ON c.id = ar.course_id
+        WHERE ar.student_id='$student_id' AND ar.status='active'
+        ORDER BY c.semester ASC, c.course_code ASC
+    ");
+    while ($active_q && $r = $active_q->fetch_assoc())
+        $active[] = $r;
+
+    $completed = [];
+    $completed_q = $conn->query("
+        SELECT c.id, c.course_code, c.title, c.semester
+        FROM academic_records ar JOIN courses c ON c.id = ar.course_id
+        WHERE ar.student_id='$student_id' AND ar.status='completed'
+        ORDER BY c.semester ASC, c.course_code ASC
+    ");
+    while ($completed_q && $r = $completed_q->fetch_assoc())
+        $completed[] = $r;
+
+    $available = [];
+    $available_q = $conn->query("
+        SELECT c.id, c.course_code, c.title, c.semester
+        FROM courses c
+        WHERE c.id NOT IN (
+            SELECT course_id FROM academic_records WHERE student_id='$student_id' AND status IN ('active','completed')
+        )
+        ORDER BY c.semester ASC, c.course_code ASC
+    ");
+    while ($available_q && $r = $available_q->fetch_assoc())
+        $available[] = $r;
+
+    echo json_encode(['status' => 'success', 'active' => $active, 'completed' => $completed, 'available' => $available]);
+    exit();
+}
+
 // Fetch counter data (for dashboard stats)
 $count_students = $conn->query("SELECT COUNT(*) AS total FROM users WHERE role='student'")->fetch_assoc()['total'];
 $count_teachers = $conn->query("SELECT COUNT(*) AS total FROM users WHERE role='teacher'")->fetch_assoc()['total'];
 $count_live = $conn->query("SELECT COUNT(*) AS total FROM online_class_tests WHERE status='LIVE NOW'")->fetch_assoc()['total'];
 
 $teachers_list = $conn->query("SELECT id, name FROM users WHERE role='teacher' ORDER BY name ASC");
+
+// Full student directory (with active/completed course counts) — powers the Students Directory table
+$students_list = $conn->query("
+    SELECT u.id, u.name, u.email, u.id_no, u.semester,
+        (SELECT COUNT(*) FROM academic_records ar WHERE ar.student_id = u.id AND ar.status = 'active') AS active_courses,
+        (SELECT COUNT(*) FROM academic_records ar WHERE ar.student_id = u.id AND ar.status = 'completed') AS completed_courses
+    FROM users u
+    WHERE u.role = 'student'
+    ORDER BY u.semester ASC, u.name ASC
+");
+$students_array = [];
+if ($students_list) {
+    while ($s = $students_list->fetch_assoc()) {
+        $students_array[] = $s;
+    }
+}
+
+// Semester-wise student headcount (for the dropdown stat card)
+$sem_counts = array_fill(1, 8, 0);
+$sem_count_q = $conn->query("SELECT semester, COUNT(*) AS c FROM users WHERE role='student' GROUP BY semester");
+if ($sem_count_q) {
+    while ($row = $sem_count_q->fetch_assoc()) {
+        if (isset($sem_counts[(int) $row['semester']])) {
+            $sem_counts[(int) $row['semester']] = (int) $row['c'];
+        }
+    }
+}
+
+// Plain array copy of teachers (used by JS for dynamically-rendered <select> elements)
+$teachers_array = [];
+$teachers_for_js = $conn->query("SELECT id, name FROM users WHERE role='teacher' ORDER BY name ASC");
+if ($teachers_for_js) {
+    while ($t = $teachers_for_js->fetch_assoc()) {
+        $teachers_array[] = $t;
+    }
+}
 
 // UNIX_TIMESTAMP(oct.created_at) is pulled in a subquery here for dynamic live-timer tracking
 $courses_list = $conn->query("
@@ -519,7 +706,7 @@ $courses_list = $conn->query("
             </div>
 
             <!-- Stats cards -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-5">
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                 <div class="card card-lg-shadow p-6 rounded-2xl flex items-center space-x-4 animate-count">
                     <div class="p-3.5 rounded-xl text-2xl gold-soft-bg gold-accent">👥</div>
                     <div>
@@ -552,6 +739,24 @@ $courses_list = $conn->query("
                             <?php if ($count_live > 0)
                                 echo '<span class="h-2.5 w-2.5 rounded-full bg-red-500 animate-ping"></span>'; ?>
                         </span>
+                    </div>
+                </div>
+
+                <!-- Semester-wise student headcount, selectable via dropdown -->
+                <div class="card card-lg-shadow p-6 rounded-2xl animate-count" style="animation-delay:.15s;">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="block text-xs font-bold text-muted-c uppercase tracking-wider">Semester
+                            Headcount</span>
+                        <span class="text-xl gold-accent">🎯</span>
+                    </div>
+                    <select id="semester-stat-select" onchange="renderSemesterStat()"
+                        class="w-full input-field p-2 rounded-lg text-sm mb-2">
+                        <?php for ($i = 1; $i <= 8; $i++)
+                            echo "<option value='$i'>Semester $i</option>"; ?>
+                    </select>
+                    <span id="semester-stat-count" class="text-2xl font-black text-main font-display">0</span>
+                    <span class="text-xs text-muted-c"> students</span>
+                    <div id="semester-stat-list" class="mt-2 max-h-24 overflow-y-auto space-y-0.5 text-xs text-muted-c">
                     </div>
                 </div>
             </div>
@@ -757,8 +962,17 @@ $courses_list = $conn->query("
                                             <span class="input-field font-bold px-2.5 py-1 rounded-md text-xs">Sem
                                                 <?php echo $c['semester']; ?></span>
                                         </td>
-                                        <td class="p-4 text-muted-c font-medium">👨‍🏫
-                                            <?php echo !empty($c['teacher_name']) ? htmlspecialchars($c['teacher_name']) : '<span class="text-red-400 italic">Unassigned</span>'; ?>
+                                        <td class="p-4" data-teacher-cell data-course-id="<?php echo $c['id']; ?>">
+                                            <select onchange="assignTeacher(<?php echo $c['id']; ?>, this)"
+                                                class="input-field text-xs font-medium px-2.5 py-1.5 rounded-lg transition cursor-pointer">
+                                                <option value="">— Unassigned —</option>
+                                                <?php
+                                                foreach ($teachers_array as $t) {
+                                                    $sel = ($c['teacher_id'] == $t['id']) ? 'selected' : '';
+                                                    echo "<option value='{$t['id']}' $sel>👨‍🏫 " . htmlspecialchars($t['name']) . "</option>";
+                                                }
+                                                ?>
+                                            </select>
                                         </td>
                                         <td class="p-4 text-center" data-live-cell data-course-id="<?php echo $c['id']; ?>">
                                             <?php if ($c['is_live'] > 0 && !empty($c['start_timestamp'])) { ?>
@@ -790,7 +1004,122 @@ $courses_list = $conn->query("
                 </div>
             </div>
 
-            <div id="student-section"></div>
+            <!-- Students Directory -->
+            <div id="student-section" class="card card-lg-shadow rounded-2xl overflow-hidden">
+                <div class="p-5 sm:p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                    style="border-color: var(--border-card);">
+                    <h4 class="text-sm font-black uppercase text-muted-c tracking-wider font-display">🎓 Students
+                        Directory</h4>
+                    <div class="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
+                        <select id="student-semester-filter" onchange="filterStudentTable()"
+                            class="input-field px-3 py-2.5 rounded-xl text-sm transition">
+                            <option value="">All Semesters</option>
+                            <?php for ($i = 1; $i <= 8; $i++)
+                                echo "<option value='$i'>Semester $i</option>"; ?>
+                        </select>
+                        <input type="text" id="student-search" placeholder="🔍 Search by name, email, or ID..."
+                            oninput="filterStudentTable()"
+                            class="input-field px-4 py-2.5 rounded-xl text-sm w-full sm:w-72 transition">
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm border-collapse data-table">
+                        <thead>
+                            <tr class="border-b text-muted-c font-bold uppercase tracking-wider text-xs"
+                                style="border-color: var(--border-card);">
+                                <th class="p-4">Student</th>
+                                <th class="p-4">ID No</th>
+                                <th class="p-4">Semester</th>
+                                <th class="p-4">Courses</th>
+                                <th class="p-4 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y" id="student-table-body" style="border-color: var(--border-card);">
+                            <?php
+                            if (count($students_array) > 0) {
+                                foreach ($students_array as $s) {
+                                    $search_blob = strtolower($s['name'] . ' ' . $s['email'] . ' ' . $s['id_no']);
+                                    ?>
+                                    <tr class="transition" data-search="<?php echo htmlspecialchars($search_blob); ?>"
+                                        data-semester="<?php echo (int) $s['semester']; ?>" data-student-row="<?php echo $s['id']; ?>">
+                                        <td class="p-4">
+                                            <p class="font-semibold text-main"><?php echo htmlspecialchars($s['name']); ?></p>
+                                            <p class="text-xs text-muted-c"><?php echo htmlspecialchars($s['email']); ?></p>
+                                        </td>
+                                        <td class="p-4 font-mono text-xs text-muted-c">
+                                            <?php echo htmlspecialchars($s['id_no']); ?>
+                                        </td>
+                                        <td class="p-4">
+                                            <span class="input-field font-bold px-2.5 py-1 rounded-md text-xs" data-sem-badge>Sem
+                                                <?php echo (int) $s['semester']; ?></span>
+                                        </td>
+                                        <td class="p-4 text-xs">
+                                            <span class="emerald-text font-bold"><?php echo (int) $s['active_courses']; ?>
+                                                active</span>
+                                            <span class="text-muted-c"> · <?php echo (int) $s['completed_courses']; ?> archived</span>
+                                        </td>
+                                        <td class="p-4">
+                                            <div class="flex items-center justify-center gap-2 flex-wrap">
+                                                <button type="button" onclick="openManageCourses(<?php echo $s['id']; ?>, '<?php echo htmlspecialchars(addslashes($s['name'])); ?>')"
+                                                    class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">📚
+                                                    Manage</button>
+                                                <button type="button" onclick="confirmPromote(<?php echo $s['id']; ?>, '<?php echo htmlspecialchars(addslashes($s['name'])); ?>')"
+                                                    class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">⬆️
+                                                    Promote</button>
+                                                <button type="button" onclick="confirmRemoveStudent(<?php echo $s['id']; ?>, '<?php echo htmlspecialchars(addslashes($s['name'])); ?>')"
+                                                    class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">🗑️
+                                                    Remove</button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    <?php
+                                }
+                            } else {
+                                echo "<tr id='no-students-row'><td colspan='5' class='text-center p-8 text-muted-c italic text-sm'>No students enrolled yet.</td></tr>";
+                            }
+                            ?>
+                        </tbody>
+                    </table>
+                    <p id="no-student-search-results" class="hidden text-center p-8 text-muted-c italic text-sm">No
+                        students match your search.</p>
+                </div>
+            </div>
+
+            <!-- Manage Courses modal -->
+            <div id="manage-courses-modal" class="fixed inset-0 z-[90] hidden items-center justify-center bg-black/50 p-4">
+                <div class="card card-lg-shadow rounded-2xl p-6 sm:p-7 max-w-lg w-full space-y-5 max-h-[85vh] overflow-y-auto">
+                    <div class="flex items-start justify-between">
+                        <div>
+                            <h3 class="font-display text-lg font-semibold text-main">Manage Courses</h3>
+                            <p class="text-xs text-muted-c mt-0.5" id="manage-courses-student-name"></p>
+                        </div>
+                        <button onclick="closeManageCourses()"
+                            class="text-muted-c hover:opacity-70 text-xl cursor-pointer leading-none">✕</button>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-black uppercase gold-accent tracking-wider mb-2">🟢 Active Courses</h4>
+                        <div id="manage-active-list" class="space-y-2 text-sm"></div>
+                    </div>
+
+                    <div>
+                        <h4 class="text-xs font-black uppercase text-muted-c tracking-wider mb-2">🗄️ Archived
+                            (Completed)</h4>
+                        <div id="manage-completed-list" class="space-y-2 text-sm"></div>
+                    </div>
+
+                    <div class="pt-2 border-t" style="border-color: var(--border-card);">
+                        <h4 class="text-xs font-black uppercase gold-accent tracking-wider mb-2">➕ Assign New Course
+                        </h4>
+                        <div class="flex flex-col sm:flex-row gap-2.5">
+                            <select id="manage-available-select" class="w-full input-field p-2.5 rounded-xl text-sm"></select>
+                            <button type="button" onclick="enrollSelectedCourse()"
+                                class="gold-bg hover:opacity-90 font-bold px-4 py-2.5 rounded-xl text-sm transition shadow-md cursor-pointer whitespace-nowrap"
+                                style="color:#3d0510;">Assign</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         </main>
     </div>
@@ -956,6 +1285,9 @@ $courses_list = $conn->query("
                         if (formId === 'form-course' && result.course) {
                             addCourseRowToTable(result.course);
                         }
+                        if (formId === 'form-student' && result.student) {
+                            addStudentRowToTable(result.student);
+                        }
                     }
                 } catch (err) {
                     console.error(err);
@@ -968,6 +1300,51 @@ $courses_list = $conn->query("
             });
         }
         ['form-student', 'form-course', 'form-gpa'].forEach(setupAjaxForm);
+
+        const teachersData = <?php echo json_encode($teachers_array); ?>;
+        const studentsData = <?php echo json_encode($students_array); ?>;
+
+        function addStudentRowToTable(s) {
+            const noRow = document.getElementById('no-students-row');
+            if (noRow) noRow.remove();
+
+            studentsData.push(s);
+
+            const tbody = document.getElementById('student-table-body');
+            const tr = document.createElement('tr');
+            const searchBlob = `${s.name} ${s.email} ${s.id_no}`.toLowerCase();
+            tr.className = 'transition';
+            tr.setAttribute('data-search', searchBlob);
+            tr.setAttribute('data-semester', s.semester);
+            tr.setAttribute('data-student-row', s.id);
+            tr.innerHTML = `
+                <td class="p-4">
+                    <p class="font-semibold text-main">${s.name}</p>
+                    <p class="text-xs text-muted-c">${s.email}</p>
+                </td>
+                <td class="p-4 font-mono text-xs text-muted-c">${s.id_no}</td>
+                <td class="p-4"><span class="input-field font-bold px-2.5 py-1 rounded-md text-xs" data-sem-badge>Sem ${s.semester}</span></td>
+                <td class="p-4 text-xs"><span class="emerald-text font-bold">0 active</span><span class="text-muted-c"> · 0 archived</span></td>
+                <td class="p-4">
+                    <div class="flex items-center justify-center gap-2 flex-wrap">
+                        <button type="button" onclick="openManageCourses(${s.id}, '${s.name.replace(/'/g, "\\'")}')" class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">📚 Manage</button>
+                        <button type="button" onclick="confirmPromote(${s.id}, '${s.name.replace(/'/g, "\\'")}')" class="input-field text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">⬆️ Promote</button>
+                        <button type="button" onclick="confirmRemoveStudent(${s.id}, '${s.name.replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">🗑️ Remove</button>
+                    </div>
+                </td>
+            `;
+            tbody.appendChild(tr);
+            renderSemesterStat();
+        }
+
+        function buildTeacherSelectHTML(courseId, selectedTeacherName) {
+            let opts = `<option value="">— Unassigned —</option>`;
+            teachersData.forEach(t => {
+                const sel = (t.name === selectedTeacherName) ? 'selected' : '';
+                opts += `<option value="${t.id}" ${sel}>👨‍🏫 ${t.name}</option>`;
+            });
+            return `<select onchange="assignTeacher(${courseId}, this)" class="input-field text-xs font-medium px-2.5 py-1.5 rounded-lg transition cursor-pointer">${opts}</select>`;
+        }
 
         function addCourseRowToTable(course) {
             const noRow = document.getElementById('no-courses-row');
@@ -982,10 +1359,218 @@ $courses_list = $conn->query("
                 <td class="p-4 font-mono font-bold gold-accent text-sm">${course.course_code}</td>
                 <td class="p-4 font-semibold text-main">${course.title}</td>
                 <td class="p-4"><span class="input-field font-bold px-2.5 py-1 rounded-md text-xs">Sem ${course.semester}</span></td>
-                <td class="p-4 text-muted-c font-medium">👨‍🏫 ${course.teacher_name || '<span class="text-red-400 italic">Unassigned</span>'}</td>
+                <td class="p-4" data-teacher-cell data-course-id="${course.id || ''}">${buildTeacherSelectHTML(course.id || '', course.teacher_name)}</td>
                 <td class="p-4 text-center"><span class="text-muted-c text-sm font-medium">Idle Mode</span></td>
             `;
             tbody.appendChild(tr);
+        }
+
+        /* ---------- Inline teacher assign/unassign (course table) ---------- */
+        async function assignTeacher(courseId, selectEl) {
+            const teacherId = selectEl.value;
+            const formData = new FormData();
+            formData.append('assign_teacher', '1');
+            formData.append('course_id', courseId);
+            formData.append('teacher_id', teacherId);
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
+            } catch (err) {
+                console.error(err);
+                showToast('Network error while updating faculty assignment.', 'error');
+            }
+        }
+
+        /* ---------- Students Directory: search + semester filter ---------- */
+        function filterStudentTable() {
+            const query = document.getElementById('student-search').value.trim().toLowerCase();
+            const semester = document.getElementById('student-semester-filter').value;
+            const rows = document.querySelectorAll('#student-table-body tr[data-search]');
+            let visibleCount = 0;
+            rows.forEach(row => {
+                const matchesQuery = row.getAttribute('data-search').includes(query);
+                const matchesSem = !semester || row.getAttribute('data-semester') === semester;
+                const visible = matchesQuery && matchesSem;
+                row.style.display = visible ? '' : 'none';
+                if (visible) visibleCount++;
+            });
+            document.getElementById('no-student-search-results').classList.toggle('hidden', visibleCount !== 0 || rows.length === 0);
+        }
+
+        /* ---------- Semester headcount stat card ---------- */
+        function renderSemesterStat() {
+            const sem = document.getElementById('semester-stat-select').value;
+            const matches = studentsData.filter(s => String(s.semester) === sem);
+            document.getElementById('semester-stat-count').textContent = matches.length;
+            const list = document.getElementById('semester-stat-list');
+            list.innerHTML = matches.map(s => `<div>${s.name} <span class="font-mono">(${s.id_no})</span></div>`).join('') || '<div class="italic">No students in this semester.</div>';
+        }
+        document.addEventListener('DOMContentLoaded', renderSemesterStat);
+
+        /* ---------- Promote student to next semester ---------- */
+        function confirmPromote(studentId, name) {
+            openConfirmModal(`Promote ${name} to their next semester? Their current semester's courses will remain visible, but new courses must be assigned separately via "Manage".`, () => {
+                promoteStudent(studentId);
+            });
+        }
+        async function promoteStudent(studentId) {
+            const formData = new FormData();
+            formData.append('promote_semester', '1');
+            formData.append('student_id', studentId);
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
+                if (result.status === 'success') {
+                    const row = document.querySelector(`tr[data-student-row="${studentId}"]`);
+                    if (row) {
+                        row.setAttribute('data-semester', result.new_semester);
+                        row.querySelector('[data-sem-badge]').textContent = `Sem ${result.new_semester}`;
+                    }
+                    const rec = studentsData.find(s => s.id == studentId);
+                    if (rec) rec.semester = result.new_semester;
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Network error while promoting student.', 'error');
+            }
+        }
+
+        /* ---------- Remove student ---------- */
+        function confirmRemoveStudent(studentId, name) {
+            openConfirmModal(`Permanently remove ${name}? This deletes their account, attendance, and submission records. This cannot be undone.`, () => {
+                removeStudent(studentId);
+            });
+        }
+        async function removeStudent(studentId) {
+            const formData = new FormData();
+            formData.append('remove_student', '1');
+            formData.append('student_id', studentId);
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
+                if (result.status === 'success') {
+                    const row = document.querySelector(`tr[data-student-row="${studentId}"]`);
+                    if (row) row.remove();
+                    const idx = studentsData.findIndex(s => s.id == studentId);
+                    if (idx > -1) studentsData.splice(idx, 1);
+                    renderSemesterStat();
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Network error while removing student.', 'error');
+            }
+        }
+
+        /* ---------- Manage Courses modal ---------- */
+        let _manageCoursesStudentId = null;
+        async function openManageCourses(studentId, name) {
+            _manageCoursesStudentId = studentId;
+            document.getElementById('manage-courses-student-name').textContent = name;
+            document.getElementById('manage-active-list').innerHTML = '<p class="text-xs text-muted-c italic">Loading...</p>';
+            document.getElementById('manage-completed-list').innerHTML = '';
+            document.getElementById('manage-available-select').innerHTML = '';
+
+            const modal = document.getElementById('manage-courses-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            const formData = new FormData();
+            formData.append('get_student_courses', '1');
+            formData.append('student_id', studentId);
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                if (result.status !== 'success') { showToast('Could not load course data.', 'error'); return; }
+
+                const activeEl = document.getElementById('manage-active-list');
+                activeEl.innerHTML = result.active.length ? result.active.map(c => `
+                    <div class="flex items-center justify-between input-field p-2.5 rounded-lg">
+                        <span><span class="font-mono font-bold gold-accent">${c.course_code}</span> — ${c.title} <span class="text-xs text-muted-c">(Sem ${c.semester})</span></span>
+                        <button onclick="archiveCourse(${c.id})" class="text-xs font-bold px-2.5 py-1 rounded-md bg-emerald-100 text-emerald-700 cursor-pointer">Mark Completed</button>
+                    </div>`).join('') : '<p class="text-xs text-muted-c italic">No active courses.</p>';
+
+                const completedEl = document.getElementById('manage-completed-list');
+                completedEl.innerHTML = result.completed.length ? result.completed.map(c => `
+                    <div class="flex items-center justify-between input-field p-2.5 rounded-lg opacity-70">
+                        <span><span class="font-mono font-bold">${c.course_code}</span> — ${c.title} <span class="text-xs text-muted-c">(Sem ${c.semester})</span></span>
+                        <span class="text-xs font-bold text-muted-c">🗄️ Archived</span>
+                    </div>`).join('') : '<p class="text-xs text-muted-c italic">Nothing archived yet.</p>';
+
+                const availEl = document.getElementById('manage-available-select');
+                availEl.innerHTML = result.available.length
+                    ? result.available.map(c => `<option value="${c.id}">${c.course_code} — ${c.title} (Sem ${c.semester})</option>`).join('')
+                    : '<option value="">No unassigned courses left</option>';
+            } catch (err) {
+                console.error(err);
+                showToast('Network error while loading course data.', 'error');
+            }
+        }
+        function closeManageCourses() {
+            const modal = document.getElementById('manage-courses-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            _manageCoursesStudentId = null;
+        }
+
+        async function archiveCourse(courseId) {
+            const formData = new FormData();
+            formData.append('archive_course', '1');
+            formData.append('student_id', _manageCoursesStudentId);
+            formData.append('course_id', courseId);
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
+                if (result.status === 'success') {
+                    openManageCourses(_manageCoursesStudentId, document.getElementById('manage-courses-student-name').textContent);
+                    refreshStudentCourseCounts(_manageCoursesStudentId);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Network error while archiving course.', 'error');
+            }
+        }
+
+        async function enrollSelectedCourse() {
+            const courseId = document.getElementById('manage-available-select').value;
+            if (!courseId) { showToast('No course selected.', 'error'); return; }
+            const formData = new FormData();
+            formData.append('enroll_course', '1');
+            formData.append('student_id', _manageCoursesStudentId);
+            formData.append('course_id', courseId);
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
+                if (result.status === 'success') {
+                    openManageCourses(_manageCoursesStudentId, document.getElementById('manage-courses-student-name').textContent);
+                    refreshStudentCourseCounts(_manageCoursesStudentId);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Network error while assigning course.', 'error');
+            }
+        }
+
+        // Refresh the "X active · Y archived" text on the directory row after a modal change
+        async function refreshStudentCourseCounts(studentId) {
+            const formData = new FormData();
+            formData.append('get_student_courses', '1');
+            formData.append('student_id', studentId);
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                if (result.status !== 'success') return;
+                const row = document.querySelector(`tr[data-student-row="${studentId}"] td:nth-child(4)`);
+                if (row) {
+                    row.innerHTML = `<span class="emerald-text font-bold">${result.active.length} active</span><span class="text-muted-c"> · ${result.completed.length} archived</span>`;
+                }
+            } catch (err) {
+                console.error(err);
+            }
         }
 
         /* ---------- ON AIR live timer ---------- */

@@ -42,15 +42,22 @@ if (isset($_POST['login'])) {
     $stmt->close();
 }
 
-// Fetch all currently 'LIVE NOW' classes from the database (no limit)
+
+// Fetch all currently 'LIVE NOW' *lecture/meet* sessions from the database.
+// FIX: previously this pulled every test_type (meet + mcq + pdf) together, so a
+// course with both a live Meet AND a live MCQ running at once showed up twice
+// with the same course title, looking like a duplicate. This widget represents
+// live lecture sessions specifically, so it's now scoped to test_type='meet'.
 $live_class_query = "SELECT t.*, c.course_code, c.title AS course_title 
                      FROM online_class_tests t 
                      JOIN courses c ON t.course_id = c.id 
-                     WHERE t.status = 'LIVE NOW' 
+                     WHERE t.status = 'LIVE NOW' AND t.test_type = 'meet'
                      ORDER BY t.id DESC";
 $live_class_result = mysqli_query($conn, $live_class_query);
 $total_live_classes = ($live_class_result) ? mysqli_num_rows($live_class_result) : 0;
+
 ?>
+
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 
