@@ -975,20 +975,20 @@ $courses_list = $conn->query("
                         </div>
                         <div>
                             <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Full Name</label>
-                            <input type="text" name="name" required placeholder="e.g., Kawser Ahmed Ratul"
+                            <input type="text" name="name" required placeholder="e.g., Dween Mohammad"
                                 class="w-full input-field p-3 rounded-xl text-sm transition">
                         </div>
                         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Institutional
                                     Email</label>
-                                <input type="email" name="email" required placeholder="student@varsity.edu"
+                                <input type="email" name="email" required placeholder="student0@vu.edu"
                                     class="w-full input-field p-3 rounded-xl text-sm transition">
                             </div>
                             <div>
-                                <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Student ID
+                                <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Student ID(Reg)
                                     No</label>
-                                <input type="text" name="id_no" required placeholder="e.g., CSE-2026-01"
+                                <input type="text" name="id_no" required placeholder="e.g., S-0123"
                                     class="w-full input-field p-3 rounded-xl text-sm transition">
                             </div>
                         </div>
