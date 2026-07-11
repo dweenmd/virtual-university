@@ -26,99 +26,139 @@ try {
         $course_id = intval($_POST['course_id']);
         $sql_stop = "UPDATE online_class_tests SET status='completed' WHERE course_id='$course_id' AND status='LIVE NOW'";
         if ($conn->query($sql_stop)) {
-            $message = "🔴 Live Session Terminated successfully!";
-            if ($is_ajax) {
-                echo json_encode(['status' => 'success', 'message' => $message, 'course_id' => $course_id]);
-                exit();
-            }
-        } elseif ($is_ajax) {
-            echo json_encode(['status' => 'error', 'message' => 'Could not terminate the session.']);
-            exit();
+            echo json_encode(['status' => 'success', 'message' => '🔴 Live Session Terminated successfully!', 'course_id' => $course_id]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Could not terminate the session: ' . $conn->error]);
         }
+        exit();
     }
 
     // Student enrollment action
     if (isset($_POST['add_student'])) {
-        $name = mysqli_real_escape_string($conn, $_POST['name']);
-        $email = mysqli_real_escape_string($conn, $_POST['email']);
-        $password = mysqli_real_escape_string($conn, $_POST['password']);
-        $id_no = mysqli_real_escape_string($conn, $_POST['id_no']);
-        $semester = intval($_POST['semester']);
+        $name = mysqli_real_escape_string($conn, $_POST['name'] ?? '');
+        $email = mysqli_real_escape_string($conn, $_POST['email'] ?? '');
+        $password = mysqli_real_escape_string($conn, $_POST['password'] ?? '');
+        $id_no = mysqli_real_escape_string($conn, $_POST['id_no'] ?? '');
+        $semester = intval($_POST['semester'] ?? 0);
 
         $check = $conn->query("SELECT id FROM users WHERE email='$email'");
-        if ($check->num_rows > 0) {
-            $message = "❌ Error: Email already registered!";
-            if ($is_ajax) {
-                echo json_encode(['status' => 'error', 'message' => $message]);
-                exit();
-            }
-        } else {
-            $sql = "INSERT INTO users (name, email, password, id_no, role, semester) VALUES ('$name', '$email', '$password', '$id_no', 'student', '$semester')";
-            if ($conn->query($sql)) {
-                $message = "🟢 Student '$name' enrolled successfully!";
-                if ($is_ajax) {
-                    echo json_encode([
-                        'status' => 'success',
-                        'message' => $message,
-                        'student' => [
-                            'id' => $conn->insert_id,
-                            'name' => htmlspecialchars($name),
-                            'email' => htmlspecialchars($email),
-                            'id_no' => htmlspecialchars($id_no),
-                            'semester' => $semester,
-                            'active_courses' => 0,
-                            'completed_courses' => 0,
-                        ]
-                    ]);
-                    exit();
-                }
-            } elseif ($is_ajax) {
-                echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
-                exit();
-            }
+        if ($check && $check->num_rows > 0) {
+            echo json_encode(['status' => 'error', 'message' => '❌ Error: Email already registered!']);
+            exit();
         }
+
+        $sql = "INSERT INTO users (name, email, password, id_no, role, semester) VALUES ('$name', '$email', '$password', '$id_no', 'student', '$semester')";
+        if ($conn->query($sql)) {
+            echo json_encode([
+                'status' => 'success',
+                'message' => "🟢 Student '$name' enrolled successfully!",
+                'student' => [
+                    'id' => $conn->insert_id,
+                    'name' => htmlspecialchars($name),
+                    'email' => htmlspecialchars($email),
+                    'id_no' => htmlspecialchars($id_no),
+                    'semester' => $semester,
+                    'active_courses' => 0,
+                    'completed_courses' => 0,
+                ]
+            ]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+        }
+        exit();
     }
 
     // Course creation action
     if (isset($_POST['add_course'])) {
-        $course_code = mysqli_real_escape_string($conn, $_POST['course_code']);
-        $title = mysqli_real_escape_string($conn, $_POST['title']);
-        $semester = intval($_POST['semester']);
-        $teacher_id = intval($_POST['teacher_id']);
+        $course_code = mysqli_real_escape_string($conn, $_POST['course_code'] ?? '');
+        $title = mysqli_real_escape_string($conn, $_POST['title'] ?? '');
+        $semester = intval($_POST['semester'] ?? 0);
+        $teacher_id = intval($_POST['teacher_id'] ?? 0);
 
         $sql = "INSERT INTO courses (course_code, title, semester, teacher_id) VALUES ('$course_code', '$title', '$semester', '$teacher_id')";
         if ($conn->query($sql)) {
-            $message = "🟢 Course '$course_code' deployed successfully!";
-            if ($is_ajax) {
-                $teacher_name = '';
-                $t_lookup = $conn->query("SELECT name FROM users WHERE id='$teacher_id'");
-                if ($t_lookup && $t_lookup->num_rows > 0) {
-                    $teacher_name = $t_lookup->fetch_assoc()['name'];
-                }
-                echo json_encode([
-                    'status' => 'success',
-                    'message' => $message,
-                    'course' => [
-                        'id' => $conn->insert_id,
-                        'course_code' => htmlspecialchars($course_code),
-                        'title' => htmlspecialchars($title),
-                        'semester' => $semester,
-                        'teacher_name' => htmlspecialchars($teacher_name),
-                    ]
-                ]);
-                exit();
+            $teacher_name = '';
+            $t_lookup = $conn->query("SELECT name FROM users WHERE id='$teacher_id'");
+            if ($t_lookup && $t_lookup->num_rows > 0) {
+                $teacher_name = $t_lookup->fetch_assoc()['name'];
             }
-        } elseif ($is_ajax) {
+            echo json_encode([
+                'status' => 'success',
+                'message' => "🟢 Course '$course_code' deployed successfully!",
+                'course' => [
+                    'id' => $conn->insert_id,
+                    'course_code' => htmlspecialchars($course_code),
+                    'title' => htmlspecialchars($title),
+                    'semester' => $semester,
+                    'teacher_name' => htmlspecialchars($teacher_name),
+                ]
+            ]);
+        } else {
             echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+        }
+        exit();
+    }
+
+    // Teacher creation action
+    if (isset($_POST['add_teacher'])) {
+        $name = mysqli_real_escape_string($conn, trim($_POST['name'] ?? ''));
+        $email = mysqli_real_escape_string($conn, trim($_POST['email'] ?? ''));
+        $password = mysqli_real_escape_string($conn, $_POST['password'] ?? '');
+
+        $check = $conn->query("SELECT id FROM users WHERE email='$email'");
+        if ($check && $check->num_rows > 0) {
+            echo json_encode(['status' => 'error', 'message' => '❌ Error: Email already registered!']);
             exit();
         }
+
+        // id_no/semester are included with safe defaults in case those columns are NOT NULL for other roles
+        $sql = "INSERT INTO users (name, email, password, id_no, role, semester) VALUES ('$name', '$email', '$password', '', 'teacher', 0)";
+        if ($conn->query($sql)) {
+            echo json_encode([
+                'status' => 'success',
+                'message' => "🟢 Teacher '$name' added successfully!",
+                'teacher' => [
+                    'id' => $conn->insert_id,
+                    'name' => htmlspecialchars($name),
+                    'email' => htmlspecialchars($email),
+                    'course_count' => 0,
+                ]
+            ]);
+        } else {
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
+        }
+        exit();
+    }
+
+    // Admin action: permanently remove a teacher (any courses they taught become Unassigned, not deleted)
+    if (isset($_POST['remove_teacher'])) {
+        $teacher_id = intval($_POST['teacher_id']);
+        $conn->begin_transaction();
+        try {
+            $conn->query("UPDATE courses SET teacher_id = NULL WHERE teacher_id = '$teacher_id'");
+            $stmt = $conn->prepare("DELETE FROM users WHERE id = ? AND role = 'teacher'");
+            $stmt->bind_param("i", $teacher_id);
+            $stmt->execute();
+            $affected = $stmt->affected_rows;
+            $stmt->close();
+            $conn->commit();
+            if ($affected > 0) {
+                echo json_encode(['status' => 'success', 'message' => '🟢 Teacher removed successfully.']);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Teacher not found.']);
+            }
+        } catch (Throwable $e) {
+            $conn->rollback();
+            echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $e->getMessage()]);
+        }
+        exit();
     }
 
     // New action: student semester GPA entry & update logic
     if (isset($_POST['submit_gpa'])) {
-        $student_id = intval($_POST['student_id']);
-        $semester_no = intval($_POST['semester_no']);
-        $gpa = floatval($_POST['gpa']);
+        $student_id = intval($_POST['student_id'] ?? 0);
+        $semester_no = intval($_POST['semester_no'] ?? 0);
+        $gpa = floatval($_POST['gpa'] ?? 0);
 
         // ON DUPLICATE KEY UPDATE ensures a given student's specific semester result gets updated instead of duplicated
         $stmt = $conn->prepare("INSERT INTO student_cgpa_records (student_id, semester_no, gpa) VALUES (?, ?, ?) 
@@ -126,19 +166,12 @@ try {
         $stmt->bind_param("iidd", $student_id, $semester_no, $gpa, $gpa);
 
         if ($stmt->execute()) {
-            $message = "🟢 GPA Updated Successfully for Student ID: $student_id (Semester $semester_no)!";
-            if ($is_ajax) {
-                echo json_encode(['status' => 'success', 'message' => $message]);
-                exit();
-            }
+            echo json_encode(['status' => 'success', 'message' => "🟢 GPA Updated Successfully for Student ID: $student_id (Semester $semester_no)!"]);
         } else {
-            $message = "❌ Error updating GPA: " . $conn->error;
-            if ($is_ajax) {
-                echo json_encode(['status' => 'error', 'message' => $message]);
-                exit();
-            }
+            echo json_encode(['status' => 'error', 'message' => "❌ Error updating GPA: " . $conn->error]);
         }
         $stmt->close();
+        exit();
     }
 
     // Admin action: assign or unassign a teacher for a course
@@ -440,6 +473,21 @@ $teachers_for_js = $conn->query("SELECT id, name FROM users WHERE role='teacher'
 if ($teachers_for_js) {
     while ($t = $teachers_for_js->fetch_assoc()) {
         $teachers_array[] = $t;
+    }
+}
+
+// Faculty directory (with assigned course counts) — powers the Faculty Directory table
+$teachers_directory = $conn->query("
+    SELECT u.id, u.name, u.email,
+        (SELECT COUNT(*) FROM courses c WHERE c.teacher_id = u.id) AS course_count
+    FROM users u
+    WHERE u.role = 'teacher'
+    ORDER BY u.name ASC
+");
+$teachers_directory_array = [];
+if ($teachers_directory) {
+    while ($t = $teachers_directory->fetch_assoc()) {
+        $teachers_directory_array[] = $t;
     }
 }
 
@@ -779,6 +827,10 @@ $courses_list = $conn->query("
                             class="sidebar-link flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition">
                             <span class="sidebar-icon-box">🎓</span> <span>Students Directory</span>
                         </a>
+                        <a href="#teacher-section" onclick="toggleMobileSidebar(false)"
+                            class="sidebar-link flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition">
+                            <span class="sidebar-icon-box">👨‍🏫</span> <span>Faculty Directory</span>
+                        </a>
                         <a href="#old-student-section" onclick="toggleMobileSidebar(false)"
                             class="sidebar-link flex items-center space-x-3 px-3 py-2.5 rounded-xl text-sm font-medium transition">
                             <span class="sidebar-icon-box">🗄️</span> <span>Old Students</span>
@@ -852,7 +904,7 @@ $courses_list = $conn->query("
                     <div>
                         <span class="block text-xs font-bold text-muted-c uppercase tracking-wider">Active
                             Faculty</span>
-                        <span class="text-3xl font-black text-main font-display"
+                        <span id="stat-faculty-count" class="text-3xl font-black text-main font-display"
                             data-countup="<?php echo (int) $count_teachers; ?>">0</span>
                     </div>
                 </div>
@@ -906,6 +958,10 @@ $courses_list = $conn->query("
                         class="tab-btn flex-1 min-w-[140px] text-center py-3.5 text-sm font-bold transition cursor-pointer">🏅
                         Publish
                         GPA</button>
+                    <button onclick="switchAdminTab('teacher')" id="tab-btn-teacher"
+                        class="tab-btn flex-1 min-w-[140px] text-center py-3.5 text-sm font-bold transition cursor-pointer">👨‍🏫
+                        Add
+                        Teacher</button>
                 </div>
 
                 <div class="p-6 sm:p-7">
@@ -1056,6 +1112,38 @@ $courses_list = $conn->query("
                             Publish Semester Result
                         </button>
                     </form>
+
+                    <!-- Teacher creation form -->
+                    <form id="form-teacher" class="admin-tab-panel hidden space-y-5">
+                        <div class="mb-1">
+                            <h3 class="text-sm font-black uppercase gold-accent tracking-wider font-display">Faculty
+                                Onboarding Node</h3>
+                            <p class="text-xs text-muted-c mt-0.5">Submit a new teacher record to the database</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Full Name</label>
+                            <input type="text" name="name" required placeholder="e.g., Dr. Farhana Islam"
+                                class="w-full input-field p-3 rounded-xl text-sm transition">
+                        </div>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Institutional
+                                    Email</label>
+                                <input type="email" name="email" required placeholder="teacher@varsity.edu"
+                                    class="w-full input-field p-3 rounded-xl text-sm transition">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-muted-c uppercase mb-1.5">Password</label>
+                                <input type="password" name="password" required placeholder="••••••••"
+                                    class="w-full input-field p-3 rounded-xl text-sm transition">
+                            </div>
+                        </div>
+                        <button type="submit" name="add_teacher"
+                            class="w-full gold-bg hover:opacity-90 font-bold py-3.5 rounded-xl text-sm transition shadow-md cursor-pointer"
+                            style="color:#3d0510;">
+                            Onboard Faculty Member
+                        </button>
+                    </form>
                 </div>
             </div>
 
@@ -1145,6 +1233,55 @@ $courses_list = $conn->query("
                     </table>
                     <p id="no-search-results" class="hidden text-center p-8 text-muted-c italic text-sm">No courses
                         match your search.</p>
+                </div>
+            </div>
+
+            <!-- Faculty Directory -->
+            <div id="teacher-section" class="card card-lg-shadow rounded-2xl overflow-hidden">
+                <div class="p-5 sm:p-6 border-b flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"
+                    style="border-color: var(--border-card);">
+                    <h4 class="text-sm font-black uppercase text-muted-c tracking-wider font-display">👨‍🏫 Faculty
+                        Directory</h4>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left text-sm border-collapse data-table">
+                        <thead>
+                            <tr class="border-b text-muted-c font-bold uppercase tracking-wider text-xs"
+                                style="border-color: var(--border-card);">
+                                <th class="p-4">Teacher</th>
+                                <th class="p-4">Courses Assigned</th>
+                                <th class="p-4 text-center">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y" id="teacher-table-body" style="border-color: var(--border-card);">
+                            <?php
+                            if (count($teachers_directory_array) > 0) {
+                                foreach ($teachers_directory_array as $t) {
+                                    ?>
+                                    <tr data-teacher-row="<?php echo $t['id']; ?>">
+                                        <td class="p-4">
+                                            <p class="font-semibold text-main"><?php echo htmlspecialchars($t['name']); ?></p>
+                                            <p class="text-xs text-muted-c"><?php echo htmlspecialchars($t['email']); ?></p>
+                                        </td>
+                                        <td class="p-4 text-xs">
+                                            <span class="emerald-text font-bold"><?php echo (int) $t['course_count']; ?></span>
+                                            <span class="text-muted-c"> course(s) assigned</span>
+                                        </td>
+                                        <td class="p-4 text-center">
+                                            <button type="button"
+                                                onclick="confirmRemoveTeacher(<?php echo $t['id']; ?>, '<?php echo htmlspecialchars(addslashes($t['name'])); ?>')"
+                                                class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">🗑️
+                                                Remove</button>
+                                        </td>
+                                    </tr>
+                                    <?php
+                                }
+                            } else {
+                                echo "<tr id='no-teachers-row'><td colspan='3' class='text-center p-8 text-muted-c italic text-sm'>No faculty members yet.</td></tr>";
+                            }
+                            ?>
+                        </tbody>
+                    </table>
                 </div>
             </div>
 
@@ -1549,8 +1686,27 @@ $courses_list = $conn->query("
             }
         }
 
-        /* ---------- AJAX form submission (Student / Course / GPA) - no page reload ---------- */
-        function setupAjaxForm(formId) {
+        /* ---------- AJAX form submission (Student / Course / GPA) - no page reload ----------
+           FIXED VERSION — two bugs fixed here:
+
+           1) THE MAIN BUG (this is what was breaking Enroll Student / Deploy Course / Publish GPA):
+              Each submit button was written as <button type="submit" name="add_student"> etc.
+              When a form is submitted the *normal* (native) way, the browser automatically
+              includes that button's name=value pair in the POST data. But here the submit event
+              is intercepted with e.preventDefault(), and `new FormData(form)` does NOT
+              automatically include the submitter button's name/value in that case.
+              Result: $_POST['add_student'] / $_POST['add_course'] / $_POST['submit_gpa'] were
+              NEVER set on the PHP side, so none of the "isset($_POST[...])" blocks ran. PHP fell
+              through to the bottom of the file and rendered the full HTML dashboard page instead
+              of a JSON reply — while the Content-Type header still said "application/json" — so
+              response.json() / JSON.parse() failed with "Server returned an invalid response".
+              FIX: explicitly formData.append(actionName, '1') before sending.
+
+           2) Reads the raw response text first and JSON.parse()'s it manually, instead of
+              calling response.json() directly, so if the server ever returns non-JSON again,
+              the raw text is logged to the console instead of a generic failure.
+        ---------------------------------------------------------------------------------- */
+        function setupAjaxForm(formId, actionName) {
             const form = document.getElementById(formId);
             form.addEventListener('submit', async (e) => {
                 e.preventDefault();
@@ -1561,14 +1717,28 @@ $courses_list = $conn->query("
                 submitBtn.classList.add('opacity-60', 'cursor-not-allowed');
 
                 const formData = new FormData(form);
+                // Manually include the action flag the PHP side checks with isset($_POST[...]).
+                formData.append(actionName, '1');
+
                 try {
                     const response = await fetch('', {
                         method: 'POST',
                         headers: { 'X-Requested-With': 'XMLHttpRequest' },
                         body: formData
                     });
-                    const result = await response.json();
-                    showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
+
+                    const rawText = await response.text();
+                    let result;
+                    try {
+                        result = JSON.parse(rawText);
+                    } catch (parseErr) {
+                        console.error('Server did not return valid JSON. Raw response below:');
+                        console.error(rawText);
+                        showToast('Server returned an invalid response — open the browser console (F12) to see the raw output.', 'error');
+                        return;
+                    }
+
+                    showToast((result.message || 'Done.').replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
                     if (result.status === 'success') {
                         form.reset();
                         if (formId === 'form-course' && result.course) {
@@ -1576,6 +1746,9 @@ $courses_list = $conn->query("
                         }
                         if (formId === 'form-student' && result.student) {
                             addStudentRowToTable(result.student);
+                        }
+                        if (formId === 'form-teacher' && result.teacher) {
+                            addTeacherRowToTable(result.teacher);
                         }
                     }
                 } catch (err) {
@@ -1588,7 +1761,10 @@ $courses_list = $conn->query("
                 }
             });
         }
-        ['form-student', 'form-course', 'form-gpa'].forEach(setupAjaxForm);
+        setupAjaxForm('form-student', 'add_student');
+        setupAjaxForm('form-course', 'add_course');
+        setupAjaxForm('form-gpa', 'submit_gpa');
+        setupAjaxForm('form-teacher', 'add_teacher');
 
         const teachersData = <?php echo json_encode($teachers_array); ?>;
         const studentsData = <?php echo json_encode($students_array); ?>;
@@ -1638,6 +1814,107 @@ $courses_list = $conn->query("
             `;
             tbody.appendChild(tr);
             renderSemesterStat();
+        }
+
+        /* ---------- Add a new teacher row + keep every teacher <select> in sync ---------- */
+        function addTeacherRowToTable(t) {
+            const noRow = document.getElementById('no-teachers-row');
+            if (noRow) noRow.remove();
+
+            teachersData.push(t);
+
+            // Add option to the "Deploy Course" form's teacher select
+            const courseFormSelect = document.querySelector('#form-course select[name="teacher_id"]');
+            if (courseFormSelect) {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = `👨‍🏫 ${t.name}`;
+                courseFormSelect.appendChild(opt);
+            }
+
+            // Add option to every existing course row's inline "assign teacher" select
+            document.querySelectorAll('[data-teacher-cell] select').forEach(sel => {
+                const opt = document.createElement('option');
+                opt.value = t.id;
+                opt.textContent = `👨‍🏫 ${t.name}`;
+                sel.appendChild(opt);
+            });
+
+            // Bump the "Active Faculty" stat card
+            const statEl = document.getElementById('stat-faculty-count');
+            if (statEl) statEl.textContent = (parseInt(statEl.textContent, 10) || 0) + 1;
+
+            const tbody = document.getElementById('teacher-table-body');
+            const tr = document.createElement('tr');
+            tr.setAttribute('data-teacher-row', t.id);
+            tr.innerHTML = `
+                <td class="p-4">
+                    <p class="font-semibold text-main">${t.name}</p>
+                    <p class="text-xs text-muted-c">${t.email}</p>
+                </td>
+                <td class="p-4 text-xs">
+                    <span class="emerald-text font-bold">${t.course_count || 0}</span>
+                    <span class="text-muted-c"> course(s) assigned</span>
+                </td>
+                <td class="p-4 text-center">
+                    <button type="button" onclick="confirmRemoveTeacher(${t.id}, '${t.name.replace(/'/g, "\\'")}')" class="bg-red-500 hover:bg-red-600 text-white text-xs font-bold px-3 py-1.5 rounded-lg transition cursor-pointer">🗑️ Remove</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        }
+
+        /* ---------- Remove a teacher (courses they taught become Unassigned, not deleted) ---------- */
+        function confirmRemoveTeacher(teacherId, name) {
+            openConfirmModal(`Permanently remove ${name} from the faculty roster? Any courses currently assigned to them will switch to "— Unassigned —". This cannot be undone.`, () => {
+                removeTeacher(teacherId);
+            });
+        }
+        async function removeTeacher(teacherId) {
+            const formData = new FormData();
+            formData.append('remove_teacher', '1');
+            formData.append('teacher_id', teacherId);
+            try {
+                const response = await fetch('', { method: 'POST', headers: { 'X-Requested-With': 'XMLHttpRequest' }, body: formData });
+                const result = await response.json();
+                showToast(result.message.replace(/^[^\w]*/, ''), result.status === 'success' ? 'success' : 'error');
+                if (result.status === 'success') {
+                    removeTeacherEverywhere(teacherId);
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Network error while removing teacher.', 'error');
+            }
+        }
+        function removeTeacherEverywhere(teacherId) {
+            // Drop from the in-memory teacher list
+            const idx = teachersData.findIndex(t => t.id == teacherId);
+            if (idx > -1) teachersData.splice(idx, 1);
+
+            // Remove the directory row
+            const row = document.querySelector(`tr[data-teacher-row="${teacherId}"]`);
+            if (row) row.remove();
+            const tbody = document.getElementById('teacher-table-body');
+            if (tbody && tbody.children.length === 0) {
+                tbody.innerHTML = "<tr id='no-teachers-row'><td colspan='3' class='text-center p-8 text-muted-c italic text-sm'>No faculty members yet.</td></tr>";
+            }
+
+            // Remove the option from the "Deploy Course" form's teacher select
+            const courseFormSelect = document.querySelector('#form-course select[name="teacher_id"]');
+            if (courseFormSelect) {
+                Array.from(courseFormSelect.options).forEach(opt => { if (opt.value == teacherId) opt.remove(); });
+            }
+
+            // Remove the option from every course row's inline "assign teacher" select,
+            // and reset it to "— Unassigned —" if that teacher was the one selected
+            document.querySelectorAll('[data-teacher-cell] select').forEach(sel => {
+                const wasSelected = sel.value == teacherId;
+                Array.from(sel.options).forEach(opt => { if (opt.value == teacherId) opt.remove(); });
+                if (wasSelected) sel.value = '';
+            });
+
+            // Drop the "Active Faculty" stat card
+            const statEl = document.getElementById('stat-faculty-count');
+            if (statEl) statEl.textContent = Math.max(0, (parseInt(statEl.textContent, 10) || 0) - 1);
         }
 
         function buildTeacherSelectHTML(courseId, selectedTeacherName) {
