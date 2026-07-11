@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 include 'db.php';
+include 'attendance_helpers.php';
 
 // Only teachers may access this page; otherwise redirect to the login page
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
@@ -20,6 +21,16 @@ if (isset($_POST['launch_meet'])) {
     $course_id = $_POST['course_id'];
     $title = mysqli_real_escape_string($conn, $_POST['title']);
     $meet_url = mysqli_real_escape_string($conn, $_POST['meet_url']);
+
+    // Before ending any previous LIVE meet session for this course, force-finalize
+    // its attendance (mark absentees) so no one is lost when a new class is started
+    // before the old attendance window's natural 2-minute expiry ran.
+    $old_live = $conn->query("SELECT id FROM online_class_tests WHERE course_id='$course_id' AND test_type='meet' AND status='LIVE NOW'");
+    if ($old_live) {
+        while ($old_row = $old_live->fetch_assoc()) {
+            try_finalize_attendance($conn, $old_row['id'], true);
+        }
+    }
 
     // Only mark previous LIVE MEET sessions as completed for this course, not every
     // online_class_tests row (keeps PDF assignments and MCQ tests untouched).
@@ -227,6 +238,13 @@ if ($my_courses_query) {
                 $check_live = $conn->query("SELECT * FROM online_class_tests WHERE course_id = '$c_id' AND status = 'LIVE NOW' LIMIT 1");
                 $live_session = ($check_live && $check_live->num_rows > 0) ? $check_live->fetch_assoc() : null;
 
+                // Finalize attendance (mark absentees) for the current live meet session if its
+                // 2-minute window has already elapsed — keeps the roster below accurate even if
+                // no student happened to be polling live_status.php when it expired.
+                if ($live_session && $live_session['test_type'] === 'meet' && !empty($live_session['attendance_started_at'])) {
+                    try_finalize_attendance($conn, $live_session['id']);
+                }
+
                 // Work out whether an attendance window is currently open for this course's live meet
                 // FIX: elapsed time now calculated inside MySQL (TIMESTAMPDIFF) instead of
                 // PHP's strtotime(), so PHP/MySQL timezone mismatches can no longer cause
@@ -244,12 +262,14 @@ if ($my_courses_query) {
                     }
                 }
 
+                // Now includes EVERY enrolled student (present and absent both), not just
+                // those with present_days > 0, so the teacher can see who's missing classes too.
                 $attendance_students = $conn->query("
-                    SELECT u.name, u.id_no, ar.present_days
+                    SELECT u.name, u.id_no, ar.present_days, ar.total_days
                     FROM users u
                     JOIN academic_records ar ON u.id = ar.student_id
-                    WHERE ar.course_id = '$c_id' AND ar.present_days > 0
-                    ORDER BY ar.present_days DESC
+                    WHERE ar.course_id = '$c_id'
+                    ORDER BY ar.present_days DESC, u.id_no ASC
                 ");
 
                 $old_mcqs = $conn->query("
@@ -363,7 +383,8 @@ if ($my_courses_query) {
                                             <span
                                                 class="bg-emerald-600 text-white font-data text-xs px-2 py-0.5 rounded-full font-black"><?php echo $total_attendance; ?></span>
                                         </h4>
-                                        <p class="text-xs text-[var(--ink-soft)] mt-1">List of present students</p>
+                                        <p class="text-xs text-[var(--ink-soft)] mt-1">Present & absent record for every
+                                            enrolled student</p>
                                     </div>
                                     <span id="arrow-att-<?php echo $c_id; ?>"
                                         class="text-emerald-600 transition-transform duration-300 transform">▼</span>
@@ -373,27 +394,48 @@ if ($my_courses_query) {
                                     class="hidden px-4 pb-4 border-t border-emerald-100 bg-white/50 pt-3 max-h-[220px] overflow-y-auto space-y-2">
                                     <?php if ($total_attendance > 0) {
                                         mysqli_data_seek($attendance_students, 0);
-                                        while ($att = $attendance_students->fetch_assoc()) { ?>
-                                            <div
-                                                class="p-3 bg-white border border-emerald-100 rounded-xl flex justify-between items-center text-sm shadow-2xs">
-                                                <div>
-                                                    <p class="font-bold text-[var(--ink)] text-sm">
-                                                        <?php echo htmlspecialchars($att['name']); ?>
-                                                    </p>
-                                                    <p class="text-xs text-[var(--ink-soft)]">ID:
-                                                        <?php echo htmlspecialchars($att['id_no']); ?>
-                                                    </p>
+                                        while ($att = $attendance_students->fetch_assoc()) {
+                                            $t_days = intval($att['total_days']);
+                                            $p_days = intval($att['present_days']);
+                                            $a_days = max($t_days - $p_days, 0);
+                                            $rate = $t_days > 0 ? round(($p_days / $t_days) * 100) : null;
+                                            ?>
+                                            <div class="p-3 bg-white border border-emerald-100 rounded-xl text-sm shadow-2xs">
+                                                <div class="flex justify-between items-center">
+                                                    <div>
+                                                        <p class="font-bold text-[var(--ink)] text-sm">
+                                                            <?php echo htmlspecialchars($att['name']); ?>
+                                                        </p>
+                                                        <p class="text-xs text-[var(--ink-soft)]">ID:
+                                                            <?php echo htmlspecialchars($att['id_no']); ?>
+                                                        </p>
+                                                    </div>
+                                                    <?php if ($t_days === 0): ?>
+                                                        <span
+                                                            class="bg-slate-100 text-slate-500 font-data font-bold text-xs px-2.5 py-1 rounded-md border border-slate-200">No
+                                                            Data Yet</span>
+                                                    <?php elseif ($rate >= 75): ?>
+                                                        <span
+                                                            class="bg-emerald-100 text-emerald-800 font-data font-bold text-xs px-2.5 py-1 rounded-md border border-emerald-200"><?php echo $rate; ?>%</span>
+                                                    <?php else: ?>
+                                                        <span
+                                                            class="bg-rose-100 text-rose-700 font-data font-bold text-xs px-2.5 py-1 rounded-md border border-rose-200"><?php echo $rate; ?>%</span>
+                                                    <?php endif; ?>
                                                 </div>
-                                                <span
-                                                    class="bg-emerald-100 text-emerald-800 font-data font-bold text-xs px-2.5 py-1 rounded-md border border-emerald-200">
-                                                    <?php echo $att['present_days']; ?> Days
-                                                </span>
+                                                <div class="mt-2 flex gap-3 text-xs font-data flex-wrap">
+                                                    <span class="text-emerald-700 font-bold">✓ Present:
+                                                        <?php echo $p_days; ?></span>
+                                                    <span class="text-rose-600 font-bold">✕ Absent:
+                                                        <?php echo $a_days; ?></span>
+                                                    <span class="text-[var(--ink-soft)]">of <?php echo $t_days; ?>
+                                                        classes</span>
+                                                </div>
                                             </div>
                                         <?php }
                                     } else { ?>
                                         <p
                                             class="text-sm text-[var(--ink-soft)] italic py-3 text-center bg-white rounded-xl border border-dashed border-emerald-200">
-                                            No students have submitted a token for today's class yet.</p>
+                                            No students enrolled yet.</p>
                                     <?php } ?>
                                 </div>
                             </div>

@@ -5,6 +5,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 include 'db.php';
+include 'attendance_helpers.php';
 
 // 2. Session verify
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
@@ -23,7 +24,7 @@ if (isset($_POST['verify_token'])) {
     $ct_id = intval($_POST['ct_id']);
     $course_id = intval($_POST['course_id']);
 
-   // FIX: elapsed time now calculated inside MySQL (TIMESTAMPDIFF) instead of
+    // FIX: elapsed time now calculated inside MySQL (TIMESTAMPDIFF) instead of
     // PHP's strtotime(), so a timezone mismatch can't let a stale token pass
     // (or reject a still-valid one).
     $check_token = $conn->query("SELECT id, attendance_token, attendance_started_at, TIMESTAMPDIFF(SECOND, attendance_started_at, NOW()) AS elapsed_seconds FROM online_class_tests WHERE id='$ct_id' AND status='LIVE NOW' AND test_type='meet' LIMIT 1");
@@ -38,10 +39,11 @@ if (isset($_POST['verify_token'])) {
     }
 
     if ($valid) {
-        $conn->query("INSERT INTO academic_records (student_id, course_id, ct_marks, total_days, present_days) VALUES ('$student_id', '$course_id', 0, 1, 1) ON DUPLICATE KEY UPDATE present_days=present_days+1, total_days=total_days+1");
-        // Remember which token this student verified for this ct_id — a NEW window
-        // (new token) will make the attendance card visible again.
-        $_SESSION['verified_attendance'][$ct_id] = $input_token;
+        // Record this student's verification for this specific live session (ct_id).
+        // NOTE: present_days / total_days are NO LONGER incremented here directly —
+        // try_finalize_attendance() does that for the whole course once the 2-minute
+        // window closes, so absent students get correctly counted too (see below).
+        $conn->query("INSERT INTO attendance_verifications (ct_id, student_id) VALUES ('$ct_id', '$student_id') ON DUPLICATE KEY UPDATE verified_at = NOW()");
         $msg = "Success! Attendance recorded successfully.";
         $msg_type = "success";
     } else {
@@ -172,13 +174,21 @@ if ($live_meet && !empty($live_meet['attendance_started_at'])) {
     $elapsed_row = ($elapsed_query) ? $elapsed_query->fetch_assoc() : null;
     $elapsed = $elapsed_row ? (int) $elapsed_row['elapsed_seconds'] : PHP_INT_MAX;
 
-    $already_verified = isset($_SESSION['verified_attendance'][$live_meet['id']])
-        && $_SESSION['verified_attendance'][$live_meet['id']] === $live_meet['attendance_token'];
+    // FIX (card-vanishing bug): this is now a pure DB lookup scoped to THIS
+    // student's own student_id (attendance_verifications table), instead of
+    // PHP $_SESSION. One student verifying can never affect what a different
+    // student's browser sees, because the row is keyed by (ct_id, student_id).
+    $already_verified = is_attendance_verified($conn, $live_meet['id'], $student_id);
 
     if ($elapsed < 120 && !$already_verified) {
         $attendance_active = true;
         $attendance_remaining = 120 - $elapsed;
     }
+
+    // Finalize (mark absentees) once the window has actually closed. Safe to
+    // call on every page load — the atomic claim inside guarantees it only
+    // actually runs once per session.
+    try_finalize_attendance($conn, $live_meet['id']);
 }
 
 // --- LIVE MCQ SESSION — independent query, same reasoning as above ---
