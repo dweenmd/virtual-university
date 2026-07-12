@@ -59,9 +59,15 @@ if (isset($_POST['submit_response'])) {
     $ans_text = !empty($selected_option) ? "Selected Option: " . $selected_option : "";
 
     // Deadline check (only applies to PDF assignments)
-    $ct_check = $conn->query("SELECT test_type, deadline FROM online_class_tests WHERE id='$ct_id' LIMIT 1");
+    // FIX: was comparing strtotime($deadline) against PHP's time(), which reads
+    // deadlines in PHP's date.timezone setting. If that differs from MySQL's
+    // session timezone (the value the teacher panel wrote NOW()/deadline in),
+    // "now" and "deadline" are computed in two different clocks and the
+    // comparison drifts — a passed deadline can still say "not passed" (or the
+    // opposite). Comparing inside MySQL with a single NOW() removes that drift.
+    $ct_check = $conn->query("SELECT test_type, deadline, (deadline IS NOT NULL AND deadline < NOW()) AS is_past_deadline FROM online_class_tests WHERE id='$ct_id' LIMIT 1");
     $ct_row = ($ct_check && $ct_check->num_rows > 0) ? $ct_check->fetch_assoc() : null;
-    $deadline_passed = ($ct_row && $ct_row['test_type'] === 'pdf' && !empty($ct_row['deadline']) && strtotime($ct_row['deadline']) < time());
+    $deadline_passed = ($ct_row && $ct_row['test_type'] === 'pdf' && intval($ct_row['is_past_deadline']) === 1);
 
     if ($deadline_passed) {
         $msg = "Deadline is over. This assignment no longer accepts submissions.";
@@ -213,25 +219,71 @@ if ($live_mcq) {
     }
 }
 
-// --- ACTIVE PDF ASSIGNMENTS (course-wise, with deadline, all assignments in the student's enrolled courses) ---
-// FIX: Previously filtered by "status = 'LIVE NOW'". But launching a new Meet/MCQ session for the
-// course marks ALL online_class_tests rows for that course (including PDF assignments) as
-// 'completed', which made assignments disappear from the student view even though their
-// deadline hadn't passed yet. An assignment should stay visible until its own deadline expires,
-// regardless of what other live sessions are started. So we now filter by deadline instead of status.
+// --- PDF ASSIGNMENTS (course-wise, all assignments in the student's enrolled courses) ---
+// FIX (archive bug): the old query filtered by "oct.deadline IS NULL OR oct.deadline >= NOW()"
+// which meant any assignment whose deadline had already passed was dropped from the SQL
+// result entirely — it never reached the page at all, so there was no way to see past
+// assignments (or the scripts already submitted for them). That's the "previous assignment
+// archive e ashe na" bug. We now fetch ALL pdf assignments for the student's courses
+// regardless of deadline, and split them in PHP into:
+//   - $active_assignments  -> deadline not passed yet (still open, shown in "Assignments")
+//   - $archived_assignments -> deadline passed (shown in a separate "Assignment Archive" card)
+// FIX: overdue status is now computed inside MySQL ("deadline < NOW()") instead
+// of PHP's strtotime($deadline) < time(). Those two clocks can run on different
+// timezones (PHP's date.timezone ini setting vs MySQL's session time_zone), so
+// comparing a MySQL-written deadline against PHP's time() could keep a card
+// marked "OPEN" well after its real deadline had passed (or archive it early).
+// A single NOW() computed by MySQL for both sides of the comparison removes
+// that drift entirely.
 $assignments_query = $conn->query("
     SELECT oct.*, c.title AS course_title, c.course_code,
+        (oct.deadline IS NOT NULL AND oct.deadline < NOW()) AS is_overdue_db,
         (SELECT pdf_submission FROM quiz_submissions WHERE ct_id = oct.id AND student_id = '$student_id' LIMIT 1) AS my_submission
     FROM online_class_tests oct
     JOIN academic_records ar ON ar.course_id = oct.course_id AND ar.student_id = '$student_id'
     JOIN courses c ON c.id = oct.course_id
-    WHERE oct.test_type = 'pdf' AND (oct.deadline IS NULL OR oct.deadline >= NOW())
+    WHERE oct.test_type = 'pdf'
     ORDER BY oct.deadline ASC
 ");
 $active_assignments = [];
+$archived_assignments = [];
 if ($assignments_query) {
     while ($row = $assignments_query->fetch_assoc()) {
-        $active_assignments[] = $row;
+        $is_overdue = intval($row['is_overdue_db']) === 1;
+        if ($is_overdue) {
+            $archived_assignments[] = $row;
+        } else {
+            $active_assignments[] = $row;
+        }
+    }
+}
+// Most recently expired assignment first in the archive list. Plain string
+// comparison is enough (and avoids strtotime/timezone issues) because MySQL
+// DATETIME values sort correctly as strings.
+usort($archived_assignments, function ($a, $b) {
+    return strcmp($b['deadline'], $a['deadline']);
+});
+
+// --- ASSIGNMENT SERIAL NUMBERS (per course, creation order) ---
+// Keeps numbering identical to what the teacher panel shows (#1, #2, ...), computed
+// independently of the deadline-ordered list above so display order doesn't affect it.
+$assignment_serial_map = [];
+$serial_seed_query = $conn->query("
+    SELECT oct.id, oct.course_id 
+    FROM online_class_tests oct
+    JOIN academic_records ar ON ar.course_id = oct.course_id AND ar.student_id = '$student_id'
+    WHERE oct.test_type = 'pdf'
+    ORDER BY oct.course_id ASC, oct.id ASC
+");
+if ($serial_seed_query) {
+    $per_course_counter = [];
+    while ($srow = $serial_seed_query->fetch_assoc()) {
+        $cid = $srow['course_id'];
+        if (!isset($per_course_counter[$cid])) {
+            $per_course_counter[$cid] = 0;
+        }
+        $per_course_counter[$cid]++;
+        $assignment_serial_map[$srow['id']] = $per_course_counter[$cid];
     }
 }
 
@@ -343,6 +395,25 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
 
         input[type="range"]::-webkit-slider-thumb {
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+        }
+
+        details.archive-toggle>summary,
+        details summary {
+            list-style: none;
+            cursor: pointer;
+        }
+
+        details.archive-toggle>summary::-webkit-details-marker,
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+
+        details.archive-toggle[open]>summary .archive-chevron {
+            transform: rotate(180deg);
+        }
+
+        .archive-chevron {
+            transition: transform 0.2s ease;
         }
     </style>
 </head>
@@ -550,7 +621,7 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                 </div>
             <?php } ?>
 
-            <!-- PDF Assignments (course-wise, with deadline) -->
+            <!-- PDF Assignments — only currently-open ones (deadline not passed) -->
             <div class="bg-white p-6 sm:p-7 rounded-2xl border border-[var(--line)] space-y-5">
                 <div>
                     <h3 class="font-display text-xl font-semibold text-[var(--ink)]">📄 Assignments</h3>
@@ -561,20 +632,24 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                 <?php if (!empty($active_assignments)): ?>
                     <div class="space-y-4">
                         <?php foreach ($active_assignments as $asn):
-                            $is_overdue = !empty($asn['deadline']) && strtotime($asn['deadline']) < time();
                             $already_submitted = !empty($asn['my_submission']);
+                            $asn_serial = isset($assignment_serial_map[$asn['id']]) ? $assignment_serial_map[$asn['id']] : null;
                             ?>
                             <div class="p-5 rounded-xl border border-[var(--line)] ledger space-y-3">
                                 <div class="flex items-center justify-between gap-2 flex-wrap">
                                     <div class="flex items-center gap-2">
                                         <span
                                             class="font-data text-[11px] uppercase font-semibold text-[var(--maroon)] bg-[#faf3e2] px-2.5 py-1 rounded border border-[var(--gold-25)]"><?php echo htmlspecialchars($asn['course_code']); ?></span>
+                                        <?php if ($asn_serial !== null): ?>
+                                            <span
+                                                class="font-data text-[11px] font-semibold text-[var(--ink-soft)] bg-[var(--paper-dim-60)] px-2 py-1 rounded border border-[var(--line)]">#<?php echo $asn_serial; ?></span>
+                                        <?php endif; ?>
                                         <span
                                             class="text-sm font-semibold text-[var(--ink)]"><?php echo htmlspecialchars($asn['title']); ?></span>
                                     </div>
                                     <span
-                                        class="text-[11px] font-bold uppercase px-2.5 py-1 rounded-full <?php echo $is_overdue ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'; ?>">
-                                        <?php echo $is_overdue ? '⏰ Deadline Over' : '🟢 Open'; ?>
+                                        class="text-[11px] font-bold uppercase px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                                        🟢 Open
                                     </span>
                                 </div>
 
@@ -595,10 +670,6 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                                         <a href="<?php echo htmlspecialchars($asn['my_submission']); ?>" target="_blank"
                                             class="font-semibold hover:underline">View my script</a>
                                     </div>
-                                <?php elseif ($is_overdue): ?>
-                                    <div class="bg-rose-50 border border-rose-200 p-4 rounded-xl text-sm text-rose-700">
-                                        ❌ Deadline is over. Submission is no longer accepted.
-                                    </div>
                                 <?php else: ?>
                                     <form method="POST" enctype="multipart/form-data" action=""
                                         class="border-t border-[var(--line)] pt-3 space-y-2">
@@ -618,8 +689,99 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                     </div>
                 <?php else: ?>
                     <p class="text-sm text-[var(--ink-soft)] italic text-center py-6 bg-[var(--paper-dim-60)] rounded-xl">
-                        No assignments have been posted yet.</p>
+                        No open assignments right now.</p>
                 <?php endif; ?>
+            </div>
+
+            <!-- Assignment Archive — FIX: previously deadline-passed assignments were dropped
+     from the SQL query entirely and simply vanished. They now live here, collapsed by
+     default, still showing the question sheet and (if submitted) the student's own script. -->
+            <div class="bg-white p-6 sm:p-7 rounded-2xl border border-[var(--line)] space-y-5">
+                <details class="archive-toggle">
+                    <summary class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-display text-xl font-semibold text-[var(--ink)]">🗄️ Assignment Archive</h3>
+                            <p class="text-sm text-[var(--ink-soft)] mt-1">Past assignments whose deadline has
+                                already passed — <?php echo count($archived_assignments); ?> total.</p>
+                        </div>
+                        <span class="archive-chevron text-[var(--ink-soft)] text-lg">▾</span>
+                    </summary>
+
+                    <?php if (!empty($archived_assignments)): ?>
+                        <!-- Compact rows: each past assignment collapses to a single line by
+                 default (course, title, deadline, badge) and only expands to show the
+                 download link / submission status on click. The whole list also sits in a
+                 max-height scroll box, so an archive with many entries stays a fixed size
+                 instead of stretching the page. -->
+                        <div class="space-y-2 mt-4 max-h-[420px] overflow-y-auto pr-1">
+                            <?php foreach ($archived_assignments as $asn):
+                                $already_submitted = !empty($asn['my_submission']);
+                                $asn_serial = isset($assignment_serial_map[$asn['id']]) ? $assignment_serial_map[$asn['id']] : null;
+                                ?>
+                                <details class="rounded-xl border border-[var(--line)] bg-[var(--paper-dim-50)] group">
+                                    <summary
+                                        class="flex items-center justify-between gap-2 flex-wrap p-3.5 cursor-pointer list-none">
+                                        <div class="flex items-center gap-2 min-w-0">
+                                            <span
+                                                class="font-data text-[11px] uppercase font-semibold text-[var(--maroon)] bg-[#faf3e2] px-2.5 py-1 rounded border border-[var(--gold-25)] shrink-0"><?php echo htmlspecialchars($asn['course_code']); ?></span>
+                                            <?php if ($asn_serial !== null): ?>
+                                                <span
+                                                    class="font-data text-[11px] font-semibold text-[var(--ink-soft)] bg-[var(--paper-dim-60)] px-2 py-1 rounded border border-[var(--line)] shrink-0">#<?php echo $asn_serial; ?></span>
+                                            <?php endif; ?>
+                                            <span
+                                                class="text-sm font-semibold text-[var(--ink)] truncate"><?php echo htmlspecialchars($asn['title']); ?></span>
+                                            <span class="text-xs text-[var(--ink-soft)] font-data shrink-0 hidden sm:inline">
+                                                <?php echo !empty($asn['deadline']) ? date("d M Y", strtotime($asn['deadline'])) : ''; ?>
+                                            </span>
+                                        </div>
+                                        <div class="flex items-center gap-2 shrink-0">
+                                            <?php if ($already_submitted): ?>
+                                                <span
+                                                    class="text-[11px] font-bold uppercase px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">✅
+                                                    Submitted</span>
+                                            <?php else: ?>
+                                                <span
+                                                    class="text-[11px] font-bold uppercase px-2.5 py-1 rounded-full bg-rose-100 text-rose-700">⏰
+                                                    Missed</span>
+                                            <?php endif; ?>
+                                            <span
+                                                class="archive-chevron text-[var(--ink-soft)] text-sm transition-transform group-open:rotate-180">▾</span>
+                                        </div>
+                                    </summary>
+
+                                    <div class="px-3.5 pb-3.5 pt-1 space-y-3 border-t border-[var(--line)]">
+                                        <p class="text-xs text-[var(--ink-soft)] pt-2">Deadline:
+                                            <span class="font-semibold text-[var(--ink)]">
+                                                <?php echo !empty($asn['deadline']) ? date("d M Y, h:i A", strtotime($asn['deadline'])) : 'N/A'; ?>
+                                            </span>
+                                        </p>
+
+                                        <a href="<?php echo htmlspecialchars($asn['pdf_question']); ?>" target="_blank"
+                                            class="inline-flex bg-[var(--gold-soft)] text-[var(--maroon-deep)] font-semibold px-5 py-2.5 rounded-lg text-sm hover:brightness-95 transition">Download
+                                            Question Sheet ↓</a>
+
+                                        <?php if ($already_submitted): ?>
+                                            <div
+                                                class="bg-emerald-50 border border-emerald-200 p-4 rounded-xl text-sm text-emerald-800 flex items-center justify-between">
+                                                <span>✅ Submitted successfully</span>
+                                                <a href="<?php echo htmlspecialchars($asn['my_submission']); ?>" target="_blank"
+                                                    class="font-semibold hover:underline">View my script</a>
+                                            </div>
+                                        <?php else: ?>
+                                            <div class="bg-rose-50 border border-rose-200 p-4 rounded-xl text-sm text-rose-700">
+                                                ❌ Deadline passed. Submission is no longer accepted.
+                                            </div>
+                                        <?php endif; ?>
+                                    </div>
+                                </details>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php else: ?>
+                        <p
+                            class="text-sm text-[var(--ink-soft)] italic text-center py-6 bg-[var(--paper-dim-60)] rounded-xl mt-4">
+                            No past assignments yet.</p>
+                    <?php endif; ?>
+                </details>
             </div>
 
             <!-- Lecture Notes / Resources -->

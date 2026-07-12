@@ -279,16 +279,34 @@ if ($my_courses_query) {
                     ORDER BY id DESC
                 ");
 
+                // NOTE: fetched ASC first so serial numbers (#1, #2, ...) reflect true
+                // creation order for this course, then reversed for newest-first display.
                 $course_assignments = $conn->query("
                     SELECT id, title, deadline, status 
                     FROM online_class_tests 
                     WHERE course_id = '$c_id' AND test_type = 'pdf' 
-                    ORDER BY id DESC
+                    ORDER BY id ASC
                 ");
                 $assignments_array = [];
                 if ($course_assignments) {
+                    $serial = 1;
                     while ($a = $course_assignments->fetch_assoc()) {
+                        $a['serial'] = $serial++;
                         $assignments_array[] = $a;
+                    }
+                }
+                $assignments_array = array_reverse($assignments_array);
+
+                // Split into active vs archived (deadline passed) — archived ones move
+                // into their own collapsible box instead of cluttering the active list.
+                $active_assignments_arr = [];
+                $archived_assignments_arr = [];
+                foreach ($assignments_array as $a) {
+                    $is_over = !empty($a['deadline']) && strtotime($a['deadline']) < time();
+                    if ($is_over) {
+                        $archived_assignments_arr[] = $a;
+                    } else {
+                        $active_assignments_arr[] = $a;
                     }
                 }
 
@@ -482,6 +500,61 @@ if ($my_courses_query) {
                                     <?php endif; ?>
                                 </div>
                             </div>
+
+                            <!-- Archived Assignments: PDF tasks whose deadline has already passed.
+                                 Kept out of the active tracker dropdown but still viewable here,
+                                 with a shortcut to jump straight to their submission list. -->
+                            <div
+                                class="bg-slate-50 border border-slate-200 rounded-2xl overflow-hidden transition-all duration-300 shadow-xs">
+                                <button
+                                    onclick="toggleSection('assign-archive-<?php echo $c_id; ?>', 'arrow-assign-archive-<?php echo $c_id; ?>')"
+                                    class="w-full p-4 flex justify-between items-center text-left focus:outline-hidden cursor-pointer hover:bg-slate-100 transition-colors">
+                                    <div>
+                                        <h4
+                                            class="text-sm font-bold text-slate-600 uppercase tracking-wider flex items-center gap-1.5">
+                                            📦 Archived Assignments
+                                            <span
+                                                class="bg-slate-500 text-white font-data text-xs px-2 py-0.5 rounded-full font-black"><?php echo count($archived_assignments_arr); ?></span>
+                                        </h4>
+                                        <p class="text-xs text-[var(--ink-soft)] mt-1">Deadline pass hoye gechey emon
+                                            assignment</p>
+                                    </div>
+                                    <span id="arrow-assign-archive-<?php echo $c_id; ?>"
+                                        class="text-slate-500 transition-transform duration-300 transform">▼</span>
+                                </button>
+
+                                <div id="assign-archive-<?php echo $c_id; ?>"
+                                    class="hidden px-4 pb-4 border-t border-slate-200 bg-white/50 pt-3 max-h-[260px] overflow-y-auto space-y-2">
+                                    <?php if (!empty($archived_assignments_arr)): ?>
+                                        <?php foreach ($archived_assignments_arr as $a):
+                                            $sub_count = isset($assignment_submissions[$a['id']]) ? count($assignment_submissions[$a['id']]) : 0;
+                                            ?>
+                                            <div class="p-2.5 bg-white border border-slate-200 rounded-xl text-sm space-y-1.5">
+                                                <div class="flex items-center justify-between gap-2">
+                                                    <span class="min-w-0">
+                                                        <span
+                                                            class="font-data text-[10px] text-slate-500">#<?php echo $a['serial']; ?></span>
+                                                        <span
+                                                            class="font-semibold text-[var(--ink)]"><?php echo htmlspecialchars($a['title']); ?></span>
+                                                    </span>
+                                                    <span
+                                                        class="font-data text-[10px] text-slate-500 shrink-0"><?php echo $sub_count; ?>/<?php echo $total_students; ?></span>
+                                                </div>
+                                                <p class="text-[11px] text-[var(--ink-soft)]">Deadline chilo:
+                                                    <?php echo date("d M Y, h:i A", strtotime($a['deadline'])); ?>
+                                                </p>
+                                                <button
+                                                    onclick="showAssignmentSubs(<?php echo $c_id; ?>, <?php echo $a['id']; ?>); document.getElementById('assignment-tracker-<?php echo $c_id; ?>').scrollIntoView({behavior:'smooth'});"
+                                                    class="text-[11px] font-bold text-blue-600 hover:underline cursor-pointer">Submission
+                                                    list dekhun ↓</button>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php else: ?>
+                                        <p class="text-sm text-[var(--ink-soft)] italic text-center py-2">Kono archived
+                                            assignment nei.</p>
+                                    <?php endif; ?>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="lg:col-span-2 space-y-4">
@@ -672,27 +745,35 @@ if ($my_courses_query) {
 
                             </div>
 
-                            <div class="p-5 bg-white border border-[var(--line)] rounded-2xl">
+                            <div class="p-5 bg-white border border-[var(--line)] rounded-2xl"
+                                id="assignment-tracker-<?php echo $c_id; ?>">
                                 <h5 class="text-sm font-bold text-[var(--ink)] mb-2 uppercase tracking-wide">🗂️ Assignment
                                     Submission Tracker</h5>
                                 <p class="text-xs text-[var(--ink-soft)] mb-3">Choose an assignment to see who has
                                     submitted and who hasn't yet.</p>
 
                                 <?php if (!empty($assignments_array)): ?>
-                                    <select onchange="showAssignmentSubs(<?php echo $c_id; ?>, this.value)"
-                                        class="w-full border border-[var(--line)] focus:border-[var(--maroon)] focus:ring-2 focus:ring-[var(--gold-25)] p-2.5 rounded-xl text-sm bg-white transition-all outline-hidden mb-3">
-                                        <option value="">-- Select Assignment --</option>
-                                        <?php foreach ($assignments_array as $a):
-                                            $sub_count = isset($assignment_submissions[$a['id']]) ? count($assignment_submissions[$a['id']]) : 0;
-                                            $dl_label = !empty($a['deadline']) ? date("d M, h:i A", strtotime($a['deadline'])) : "No deadline";
-                                            ?>
-                                            <option value="<?php echo $a['id']; ?>">
-                                                <?php echo htmlspecialchars($a['title']); ?> —
-                                                <?php echo $sub_count; ?>/<?php echo $total_students; ?>
-                                                submitted (Deadline: <?php echo $dl_label; ?>)
-                                            </option>
-                                        <?php endforeach; ?>
-                                    </select>
+                                    <?php if (!empty($active_assignments_arr)): ?>
+                                        <select onchange="showAssignmentSubs(<?php echo $c_id; ?>, this.value)"
+                                            class="w-full border border-[var(--line)] focus:border-[var(--maroon)] focus:ring-2 focus:ring-[var(--gold-25)] p-2.5 rounded-xl text-sm bg-white transition-all outline-hidden mb-3">
+                                            <option value="">-- Select Assignment --</option>
+                                            <?php foreach ($active_assignments_arr as $a):
+                                                $sub_count = isset($assignment_submissions[$a['id']]) ? count($assignment_submissions[$a['id']]) : 0;
+                                                $dl_label = !empty($a['deadline']) ? date("d M, h:i A", strtotime($a['deadline'])) : "No deadline";
+                                                ?>
+                                                <option value="<?php echo $a['id']; ?>">
+                                                    #<?php echo $a['serial']; ?> — <?php echo htmlspecialchars($a['title']); ?> —
+                                                    <?php echo $sub_count; ?>/<?php echo $total_students; ?>
+                                                    submitted (Deadline: <?php echo $dl_label; ?>)
+                                                </option>
+                                            <?php endforeach; ?>
+                                        </select>
+                                    <?php else: ?>
+                                        <p
+                                            class="text-sm text-[var(--ink-soft)] italic text-center py-2 mb-3 bg-[var(--paper-dim-60)] rounded-xl">
+                                            Kono active assignment nei — shobgula archive-e cholay geche (upore
+                                            "Archived Assignments" box dekhun).</p>
+                                    <?php endif; ?>
 
                                     <?php foreach ($assignments_array as $a):
                                         $submitted_list = isset($assignment_submissions[$a['id']]) ? $assignment_submissions[$a['id']] : [];
@@ -712,6 +793,10 @@ if ($my_courses_query) {
                                         ?>
                                         <div id="assignment-subs-<?php echo $a['id']; ?>"
                                             class="assignment-subs-panel-<?php echo $c_id; ?> hidden space-y-3">
+
+                                            <p class="text-sm font-bold text-[var(--ink)] px-1">#<?php echo $a['serial']; ?> —
+                                                <?php echo htmlspecialchars($a['title']); ?>
+                                            </p>
 
                                             <div
                                                 class="flex justify-between items-center text-xs font-bold uppercase tracking-wide px-1">
