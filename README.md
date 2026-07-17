@@ -361,7 +361,6 @@ composer require mpdf/mpdf
 - 💬 Live Chat
 - 📹 Video Recording
 - 📊 Analytics Dashboard
-- 🌙 Dark Mode
 - 📡 REST API
 - 📲 Android App
 
