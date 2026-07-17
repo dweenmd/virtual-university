@@ -1,0 +1,255 @@
+/* ============================================================
+   VIRTUAL VARSITY — INDEX / LANDING PAGE STYLES
+   Imports shared.css for base tokens + adds landing-specific UI
+   ============================================================ */
+@import url('shared.css');
+
+/* ── Landing-specific overrides (keep existing variable aliases) ── */
+:root {
+    --color-du-maroon: var(--vv-maroon);
+    --color-du-maroon-dark: var(--vv-maroon-deep);
+    --color-du-maroon-light: var(--vv-maroon-light);
+    --color-du-gold: var(--vv-gold);
+    --color-du-gold-bright: var(--vv-gold-bright);
+    --color-du-gold-soft: var(--vv-gold-soft);
+
+    --bg-app: var(--vv-bg);
+    --text-main: var(--vv-text);
+    --bg-card: var(--vv-bg-card);
+    --border-card: var(--vv-border);
+    --text-muted: var(--vv-text-muted);
+    --bg-input: var(--vv-input-bg);
+}
+
+/* ── Navbar ── */
+#site-nav {
+    transition: background-color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+html[data-theme="dark"] #site-nav {
+    background-color: rgba(10, 4, 5, 0.88) !important;
+    border-color: var(--vv-border) !important;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+}
+
+.nav-link {
+    transition: color 0.25s ease, background-color 0.25s ease;
+    color: var(--vv-text-secondary);
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.5rem;
+}
+
+.nav-link:hover {
+    color: var(--vv-maroon) !important;
+    background-color: rgba(var(--vv-shadow-color), 0.03);
+}
+
+.nav-link.active-link {
+    color: var(--vv-maroon) !important;
+    font-weight: 700;
+}
+
+/* ── Glass Card (landing specific with larger elevation) ── */
+.glass-card {
+    background-color: var(--vv-bg-card);
+    border: 1px solid var(--vv-border);
+    backdrop-filter: blur(16px) saturate(1.5);
+    -webkit-backdrop-filter: blur(16px) saturate(1.5);
+    box-shadow: 0 20px 50px -15px rgba(var(--vv-shadow-color), 0.06);
+    transition: transform 0.5s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.4s ease,
+                border-color 0.3s ease;
+}
+
+[data-theme="dark"] .glass-card {
+    box-shadow: 0 25px 60px -20px rgba(0, 0, 0, 0.6);
+}
+
+.glass-card:hover {
+    transform: translateY(-5px);
+    border-color: var(--vv-gold);
+    box-shadow:
+        0 30px 60px -20px rgba(var(--vv-shadow-color), 0.1),
+        0 0 0 1px var(--vv-gold-glow);
+}
+
+[data-theme="dark"] .glass-card:hover {
+    box-shadow:
+        0 30px 60px -20px rgba(0, 0, 0, 0.7),
+        0 0 24px var(--vv-maroon-glow);
+}
+
+/* ── Role Tab Selector ── */
+.role-tabs {
+    background-color: rgba(var(--vv-shadow-color), 0.04);
+    border: 1px solid var(--vv-border);
+    transition: background-color 0.3s ease;
+    border-radius: 0.75rem;
+    padding: 0.25rem;
+}
+
+[data-theme="dark"] .role-tabs {
+    background-color: rgba(22, 12, 14, 0.7);
+}
+
+.role-tab-btn {
+    transition: all 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+    color: var(--vv-text-muted);
+    border-radius: 0.5rem;
+    padding: 0.5rem 1rem;
+}
+
+.role-tab-btn[aria-selected="true"] {
+    background-color: var(--vv-input-bg) !important;
+    color: var(--vv-maroon) !important;
+    box-shadow: 0 4px 12px rgba(var(--vv-shadow-color), 0.06);
+    font-weight: 700;
+}
+
+[data-theme="dark"] .role-tab-btn[aria-selected="true"] {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+    color: #fff !important;
+    background-color: var(--vv-bg-subtle) !important;
+}
+
+/* ── Premium Buttons (landing) ── */
+.btn-premium-maroon {
+    background: linear-gradient(135deg, var(--vv-maroon) 0%, var(--vv-maroon-deep) 100%);
+    color: #FFFFFF !important;
+    box-shadow: 0 4px 14px var(--vv-maroon-glow), inset 0 1px 0 rgba(255,255,255,0.1);
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.25s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-premium-maroon::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+    transition: left 0.5s ease;
+}
+
+.btn-premium-maroon:hover::before {
+    left: 100%;
+}
+
+.btn-premium-maroon:hover {
+    transform: translateY(-2px) scale(1.02);
+    box-shadow: 0 8px 24px rgba(122, 10, 33, 0.35);
+}
+
+.btn-premium-maroon:active {
+    transform: translateY(0) scale(0.98);
+}
+
+.btn-premium-outline {
+    background: transparent;
+    border: 1.5px solid var(--vv-maroon);
+    color: var(--vv-maroon) !important;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.btn-premium-outline:hover {
+    background-color: var(--vv-maroon);
+    color: #FFFFFF !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 18px var(--vv-maroon-glow);
+}
+
+/* ── Premium Input ── */
+.premium-input {
+    border: 1.5px solid var(--vv-border);
+    background-color: var(--vv-input-bg);
+    color: var(--vv-text);
+    transition: all 0.3s ease;
+    border-radius: 0.75rem;
+}
+
+.premium-input:focus {
+    border-color: var(--vv-maroon);
+    box-shadow: 0 0 0 4px var(--vv-maroon-glow);
+    outline: none;
+}
+
+/* ── Entrance Animations ── */
+@keyframes riseIn {
+    from {
+        opacity: 0;
+        transform: translateY(24px);
+        filter: blur(4px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+        filter: blur(0);
+    }
+}
+
+.rise-in {
+    animation: riseIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.rise-in-1 {
+    animation-delay: 0.05s;
+}
+
+.rise-in-2 {
+    animation-delay: 0.15s;
+}
+
+/* ── Glowing Badge ── */
+.glowing-badge {
+    position: relative;
+}
+
+.glowing-badge::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: 0 0 10px var(--vv-maroon);
+    opacity: 0.5;
+    animation: glowPulse 2s infinite;
+}
+
+/* ── Skeleton Shimmer (landing) ── */
+.skeleton-shimmer {
+    background: linear-gradient(90deg,
+        var(--vv-border) 25%,
+        var(--vv-bg) 50%,
+        var(--vv-border) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+/* ── Hero section floating orbs ── */
+.hero-orb {
+    position: absolute;
+    border-radius: 9999px;
+    pointer-events: none;
+    filter: blur(60px);
+    animation: gentleFloat 8s ease-in-out infinite;
+}
+
+.hero-orb-1 {
+    width: 300px;
+    height: 300px;
+    background: var(--vv-maroon-glow);
+    top: 10%;
+    left: 5%;
+    animation-delay: 0s;
+}
+
+.hero-orb-2 {
+    width: 250px;
+    height: 250px;
+    background: var(--vv-gold-glow);
+    bottom: 20%;
+    right: 10%;
+    animation-delay: -4s;
+}

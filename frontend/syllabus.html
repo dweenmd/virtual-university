@@ -6,13 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Syllabus Explorer - Virtual Varsity</title>
     <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-    <style>
-        :root {
-            --color-du-maroon: #73001a;
-            --color-du-maroon-dark: #540012;
-            --color-du-gold: #d4af37;
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/syllabus.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('vv_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
 </head>
 
 <body class="bg-slate-50 font-sans text-slate-800 antialiased">
@@ -28,10 +28,16 @@
                 <span class="text-[10px] uppercase tracking-widest text-slate-400 font-bold">Academic Blueprint</span>
             </div>
         </div>
-        <a href="index.php"
-            class="border border-slate-200 hover:bg-slate-50 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transition duration-200">
-            ← Back to Portal
-        </a>
+        <div class="flex items-center space-x-3">
+            <!-- Theme Toggle Button -->
+            <button onclick="toggleTheme()" id="theme-toggle-btn" class="w-8 h-8 flex items-center justify-center rounded-xl border border-slate-200 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition duration-200 cursor-pointer" aria-label="Toggle theme">
+                <span id="theme-toggle-icon" class="text-sm">🌙</span>
+            </button>
+            <a href="index.php"
+                class="border border-slate-200 hover:bg-slate-50 text-slate-700 dark:text-stone-300 px-4 py-2 rounded-xl text-xs font-bold transition duration-200">
+                ← Back to Portal
+            </a>
+        </div>
     </nav>
 
     <header class="max-w-6xl mx-auto px-4 pt-12 pb-6">
@@ -1101,6 +1107,26 @@
                 }
             });
         }
+        // Theme toggle helper functions
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            const btnIcon = document.getElementById('theme-toggle-icon');
+            if (btnIcon) {
+                btnIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+            }
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('vv_theme', next);
+            applyTheme(next);
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const saved = localStorage.getItem('vv_theme') || 'light';
+            applyTheme(saved);
+        });
     </script>
 </body>
 

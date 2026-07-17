@@ -3,8 +3,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-include 'db.php';
-include 'attendance_helpers.php';
+include __DIR__ . '/../db.php';
+include __DIR__ . '/../attendance_helpers.php';
 
 // সিকিউরিটি গেটকিপার চেক
 if (!isset($_SESSION['role']) || ($_SESSION['role'] !== 'teacher' && $_SESSION['role'] !== 'admin')) {

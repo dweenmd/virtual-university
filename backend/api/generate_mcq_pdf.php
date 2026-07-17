@@ -9,15 +9,15 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-include 'db.php';
+include __DIR__ . '/../db.php';
 
 // শুধুমাত্র লগইন করা শিক্ষকই PDF জেনারেট করতে পারবেন
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
-    header("Location: index.php");
+    header("Location: ../../frontend/index.php");
     exit();
 }
 
-require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/../../vendor/autoload.php';
 
 $teacher_id = $_SESSION['user_id'];
 $course_id = isset($_GET['course_id']) ? (int) $_GET['course_id'] : 0;
@@ -89,3 +89,4 @@ while ($row = $mcq_result->fetch_assoc()) {
 $mpdf->WriteHTML($html);
 $mpdf->Output('mcq_archive_course_' . $course_id . '_' . date('Ymd_His') . '.pdf', 'D'); // 'D' = force download
 exit();
+?>

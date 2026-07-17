@@ -1,0 +1,88 @@
+/* ============================================================
+   VIRTUAL VARSITY — SYLLABUS EXPLORER STYLES
+   Imports shared.css for base tokens + adds syllabus-specific UI
+   ============================================================ */
+@import url('shared.css');
+
+/* ── Syllabus-specific variable overrides ── */
+:root {
+    --color-du-maroon: var(--vv-maroon);
+    --color-du-maroon-dark: var(--vv-maroon-deep);
+    --color-du-gold: var(--vv-gold);
+
+    --bg-app: var(--vv-bg);
+    --bg-card: var(--vv-bg-elevated);
+    --text-main: var(--vv-text);
+    --text-muted: var(--vv-text-secondary);
+    --border-card: var(--vv-border);
+    --bg-badge: #fef3c7;
+    --bg-inner-box: rgba(248, 250, 252, 0.5);
+}
+
+[data-theme="dark"] {
+    --color-du-maroon: var(--vv-gold-bright);
+    --color-du-maroon-dark: var(--vv-maroon);
+    --color-du-gold: var(--vv-gold-bright);
+
+    --bg-app: #0f172a;
+    --bg-card: #1e293b;
+    --text-main: var(--vv-text);
+    --text-muted: var(--vv-text-secondary);
+    --border-card: var(--vv-border);
+    --bg-badge: #3a2e1d;
+    --bg-inner-box: rgba(15, 23, 42, 0.5);
+}
+
+body {
+    background-color: var(--bg-app) !important;
+    color: var(--text-main) !important;
+}
+
+/* ── Syllabus nav override ── */
+nav.bg-white\/90 {
+    background-color: rgba(30, 41, 59, 0.9) !important;
+    border-color: var(--border-card) !important;
+}
+
+html[data-theme="light"] nav.bg-white\/90 {
+    background-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* ── Syllabus card styles ── */
+.syllabus-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 1rem;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.syllabus-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 32px rgba(var(--vv-shadow-color), 0.08);
+}
+
+/* ── Semester filter select ── */
+html[data-theme="dark"] #semesterFilter {
+    background-color: var(--bg-card) !important;
+    color: var(--text-main) !important;
+    border-color: var(--border-card) !important;
+}
+
+/* ── Badge styles ── */
+html[data-theme="dark"] .bg-amber-50 {
+    background-color: var(--bg-badge) !important;
+    color: var(--color-du-gold) !important;
+}
+
+html[data-theme="dark"] .border-amber-200,
+html[data-theme="dark"] .border-amber-200\/60 {
+    border-color: var(--border-card) !important;
+}
+
+html[data-theme="dark"] .text-\[#73001a\] {
+    color: var(--color-du-gold) !important;
+}
+
+html[data-theme="dark"] .bg-slate-50\/50 {
+    background-color: var(--bg-inner-box) !important;
+}

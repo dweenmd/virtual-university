@@ -84,3 +84,4 @@ echo "\n🎉 Migration finished.\n";
 echo "</pre>";
 
 $conn->close();
+?>

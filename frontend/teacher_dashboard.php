@@ -4,8 +4,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-include 'db.php';
-include 'attendance_helpers.php';
+include '../backend/db.php';
+include '../backend/attendance_helpers.php';
 
 // Only teachers may access this page; otherwise redirect to the login page
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
@@ -112,6 +112,20 @@ if (isset($_POST['upload_note'])) {
     }
 }
 
+// Action handler: post course announcement
+if (isset($_POST['post_announcement'])) {
+    $course_id = $_POST['course_id'];
+    $title = mysqli_real_escape_string($conn, $_POST['announcement_title']);
+    $content = mysqli_real_escape_string($conn, $_POST['announcement_content']);
+
+    if (!empty($title) && !empty($content)) {
+        $conn->query("INSERT INTO announcements (course_id, title, content) VALUES ('$course_id', '$title', '$content')");
+        $message = "📢 Course announcement broadcasted successfully!";
+    } else {
+        $message = "❌ Please fill in both the announcement title and body.";
+    }
+}
+
 // Find every course assigned to this specific teacher
 $my_courses_query = $conn->query("SELECT * FROM courses WHERE teacher_id='$teacher_id' ORDER BY semester ASC, course_code ASC");
 $courses_array = [];
@@ -134,48 +148,13 @@ if ($my_courses_query) {
     <link
         href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap"
         rel="stylesheet">
-    <style>
-        :root {
-            --maroon: #73001a;
-            --maroon-deep: #3d0510;
-            --maroon-line: #a31d34;
-            --gold: #a3781f;
-            --gold-soft: #c9a227;
-            --paper: #f7f4ee;
-            --paper-dim: #efe9dd;
-            --ink: #251b16;
-            --ink-soft: #7c7166;
-            --line: #e2d9c8;
-
-            --gold-25: rgba(163, 120, 31, 0.25);
-            --gold-30: rgba(163, 120, 31, 0.30);
-            --gold-40: rgba(163, 120, 31, 0.40);
-            --paper-dim-50: rgba(239, 233, 221, 0.5);
-            --paper-dim-60: rgba(239, 233, 221, 0.6);
-            --ink-soft-70: rgba(124, 113, 102, 0.7);
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--paper);
-            color: var(--ink);
-            font-size: 16px;
-        }
-
-        .font-display {
-            font-family: 'Fraunces', serif;
-            font-optical-sizing: auto;
-        }
-
-        .font-data {
-            font-family: 'IBM Plex Mono', monospace;
-        }
-
-        ::selection {
-            background: var(--gold-soft);
-            color: var(--maroon-deep);
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/teacher.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('vv_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
 </head>
 
 <body class="antialiased">
@@ -188,8 +167,14 @@ if ($my_courses_query) {
                 <?php echo htmlspecialchars($_SESSION['name']); ?>
             </h1>
         </div>
-        <a href="index.php"
-            class="bg-[var(--maroon)] px-5 py-2.5 rounded-lg text-sm font-semibold text-white tracking-wide hover:bg-[var(--maroon-deep)] transition">Logout</a>
+        <div class="flex items-center space-x-3">
+            <!-- Theme Toggle Button -->
+            <button onclick="toggleTheme()" id="theme-toggle-btn" class="w-10 h-10 flex items-center justify-center rounded-lg border border-[var(--line)] text-[var(--ink-soft)] hover:bg-[var(--paper-dim)] transition cursor-pointer" aria-label="Toggle theme">
+                <span id="theme-toggle-icon" class="text-lg">🌙</span>
+            </button>
+            <a href="index.php"
+                class="bg-[var(--maroon)] px-5 py-2.5 rounded-lg text-sm font-semibold text-white tracking-wide hover:bg-[var(--maroon-deep)] transition">Logout</a>
+        </div>
     </nav>
 
     <div class="max-w-7xl mx-auto mt-8 px-4">
@@ -328,6 +313,33 @@ if ($my_courses_query) {
                 $total_submissions = ($course_submissions) ? $course_submissions->num_rows : 0;
                 $total_attendance = ($attendance_students) ? $attendance_students->num_rows : 0;
                 $total_old_mcqs = ($old_mcqs) ? $old_mcqs->num_rows : 0;
+
+                // Classroom analytics calculations
+                $avg_attendance = 100;
+                $at_risk_students = [];
+                if ($attendance_students && $attendance_students->num_rows > 0) {
+                    $sum_rate = 0;
+                    $count_students = 0;
+                    while ($row = $attendance_students->fetch_assoc()) {
+                        $rate = ($row['total_days'] > 0) ? round(($row['present_days'] / $row['total_days']) * 100) : 100;
+                        $sum_rate += $rate;
+                        $count_students++;
+                        if ($rate < 75) {
+                            $at_risk_students[] = [
+                                'name' => $row['name'],
+                                'id_no' => $row['id_no'],
+                                'rate' => $rate
+                            ];
+                        }
+                    }
+                    $avg_attendance = ($count_students > 0) ? round($sum_rate / $count_students) : 100;
+                    mysqli_data_seek($attendance_students, 0); // reset pointer
+                }
+
+                $ct_query = $conn->query("SELECT AVG(ct_marks) AS avg_ct, MAX(ct_marks) AS max_ct FROM academic_records WHERE course_id = '$c_id'");
+                $ct_row = $ct_query ? $ct_query->fetch_assoc() : null;
+                $avg_ct_marks = $ct_row && $ct_row['avg_ct'] !== null ? round($ct_row['avg_ct'], 1) : 0;
+                $max_ct_marks = $ct_row && $ct_row['max_ct'] !== null ? $ct_row['max_ct'] : 0;
                 ?>
                 <div class="bg-white border border-[var(--line)] rounded-3xl shadow-xs overflow-hidden">
 
@@ -345,6 +357,42 @@ if ($my_courses_query) {
                             class="bg-white/10 text-[var(--gold-soft)] text-sm font-semibold px-3.5 py-1.5 rounded-xl border border-white/10 mt-2 sm:mt-0">
                             Total: <?php echo $total_students; ?> Students Enrolled
                         </span>
+                    </div>
+
+                    <!-- Classroom Performance & Analytics Summary Widget -->
+                    <div class="bg-[var(--paper-dim)]/40 border-b border-[var(--line)] px-6 py-4 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 items-center">
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">📊</span>
+                            <div>
+                                <h4 class="text-[10px] uppercase tracking-wider font-bold text-[var(--ink-soft)]">Avg Attendance</h4>
+                                <p class="text-sm font-black text-[var(--ink)]"><?php echo $avg_attendance; ?>%</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">📝</span>
+                            <div>
+                                <h4 class="text-[10px] uppercase tracking-wider font-bold text-[var(--ink-soft)]">Avg Class Test</h4>
+                                <p class="text-sm font-black text-[var(--ink)]"><?php echo $avg_ct_marks; ?> / 20</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3">
+                            <span class="text-2xl">🏆</span>
+                            <div>
+                                <h4 class="text-[10px] uppercase tracking-wider font-bold text-[var(--ink-soft)]">Highest CT Marks</h4>
+                                <p class="text-sm font-black text-[var(--ink)]"><?php echo $max_ct_marks; ?> / 20</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center space-x-3 justify-between md:justify-end">
+                            <div class="text-left md:text-right">
+                                <h4 class="text-[10px] uppercase tracking-wider font-bold text-[var(--ink-soft)]">At-Risk Students</h4>
+                                <p class="text-sm font-black <?php echo (count($at_risk_students) > 0) ? 'text-rose-600' : 'text-emerald-600'; ?>">
+                                    <?php echo count($at_risk_students); ?> Enrolled
+                                </p>
+                            </div>
+                            <?php if (count($at_risk_students) > 0): ?>
+                                <span class="bg-rose-500/10 text-rose-500 text-[10px] font-bold px-2 py-0.5 rounded border border-rose-500/20 ml-2 animate-pulse">Needs Review</span>
+                            <?php endif; ?>
+                        </div>
                     </div>
 
                     <div class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -484,7 +532,7 @@ if ($my_courses_query) {
                                             <?php echo $total_old_mcqs; ?> completed MCQ(s) found. Download the
                                             PDF first — the delete button below will then unlock.
                                         </p>
-                                        <a href="generate_mcq_pdf.php?course_id=<?php echo $c_id; ?>" target="_blank"
+                                        <a href="../backend/api/generate_mcq_pdf.php?course_id=<?php echo $c_id; ?>" target="_blank"
                                             onclick="enableMcqDelete(<?php echo $c_id; ?>)"
                                             class="block text-center bg-amber-600 text-white font-bold py-2.5 rounded-xl text-sm hover:bg-amber-700 transition shadow-xs cursor-pointer">
                                             📥 Download PDF (Question + Correct Answer)
@@ -627,6 +675,10 @@ if ($my_courses_query) {
                                     id="tab-btn-note-<?php echo $c_id; ?>"
                                     class="flex-1 text-center py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer text-[var(--ink-soft)] hover:text-[var(--ink)]">📚
                                     Lecture Note</button>
+                                <button onclick="switchTab(<?php echo $c_id; ?>, 'announce')"
+                                    id="tab-btn-announce-<?php echo $c_id; ?>"
+                                    class="flex-1 text-center py-2.5 text-sm font-bold rounded-lg transition-all cursor-pointer text-[var(--ink-soft)] hover:text-[var(--ink)]">📢
+                                    Broadcast</button>
                             </div>
 
                             <div class="bg-white border border-[var(--line)] rounded-2xl p-6 shadow-xs">
@@ -740,6 +792,22 @@ if ($my_courses_query) {
                                         <button type="submit" name="upload_note"
                                             class="md:col-span-2 bg-purple-600 text-white font-bold py-3 rounded-xl text-sm hover:bg-purple-700 transition shadow-sm cursor-pointer">Upload
                                             Note & Broadcast to Nodes 🚀</button>
+                                    </form>
+                                </div>
+
+                                <div id="tab-content-announce-<?php echo $c_id; ?>"
+                                     class="tab-panel-<?php echo $c_id; ?> hidden space-y-3">
+                                    <div class="mb-2">
+                                        <h5 class="text-sm font-black text-[var(--ink)] uppercase tracking-wide">📢 Broadcast Course Announcement</h5>
+                                    </div>
+                                    <form method="POST" action="" class="space-y-3">
+                                        <input type="hidden" name="course_id" value="<?php echo $c_id; ?>">
+                                        <input type="text" name="announcement_title" placeholder="Announcement Title: e.g., Midterm Exam Guide" required
+                                            class="w-full border border-[var(--line)] focus:border-[var(--maroon)] focus:ring-2 focus:ring-[var(--gold-25)] p-3 rounded-xl text-sm bg-white transition-all outline-hidden">
+                                        <textarea name="announcement_content" placeholder="Type your announcement content here..." required rows="3"
+                                            class="w-full border border-[var(--line)] focus:border-[var(--maroon)] focus:ring-2 focus:ring-[var(--gold-25)] p-3 rounded-xl text-sm bg-white transition-all outline-hidden"></textarea>
+                                        <button type="submit" name="post_announcement"
+                                            class="w-full bg-[var(--maroon)] text-white font-bold py-3 rounded-xl text-sm hover:bg-[var(--maroon-deep)] transition shadow-sm cursor-pointer">Broadcast Announcement</button>
                                     </form>
                                 </div>
 
@@ -910,7 +978,7 @@ if ($my_courses_query) {
             formData.append('course_id', courseId);
 
             try {
-                const response = await fetch('update_live_status.php', {
+                const response = await fetch('../backend/api/update_live_status.php', {
                     method: 'POST',
                     body: formData
                 });
@@ -955,7 +1023,7 @@ if ($my_courses_query) {
             const targetPanel = document.getElementById(`tab-content-${tabName}-${courseId}`);
             if (targetPanel) targetPanel.classList.remove('hidden');
 
-            const tabButtons = ['meet', 'mcq', 'pdf', 'note'];
+            const tabButtons = ['meet', 'mcq', 'pdf', 'note', 'announce'];
             tabButtons.forEach(btn => {
                 const btnEl = document.getElementById(`tab-btn-${btn}-${courseId}`);
                 if (btnEl) {
@@ -988,7 +1056,7 @@ if ($my_courses_query) {
             formData.append('course_id', courseId);
 
             try {
-                const response = await fetch('delete_old_mcq.php', {
+                const response = await fetch('../backend/api/delete_old_mcq.php', {
                     method: 'POST',
                     body: formData
                 });
@@ -1039,7 +1107,7 @@ if ($my_courses_query) {
             formData.append('course_id', courseId);
 
             try {
-                const response = await fetch('start_attendance.php', {
+                const response = await fetch('../backend/api/start_attendance.php', {
                     method: 'POST',
                     body: formData
                 });
@@ -1086,9 +1154,28 @@ if ($my_courses_query) {
                 }
             }, 1000);
         }
+        // Theme toggle helper functions
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            const btnIcon = document.getElementById('theme-toggle-icon');
+            if (btnIcon) {
+                btnIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+            }
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('vv_theme', next);
+            applyTheme(next);
+        }
 
         // Resume any countdown that was already active when the page loaded/refreshed
         document.addEventListener('DOMContentLoaded', () => {
+            // Apply theme on load
+            const saved = localStorage.getItem('vv_theme') || 'light';
+            applyTheme(saved);
+
             document.querySelectorAll('[id^="att-countdown-"]').forEach(el => {
                 const courseId = el.id.replace('att-countdown-', '');
                 const activeBox = document.getElementById(`att-active-${courseId}`);

@@ -1,0 +1,147 @@
+/* ============================================================
+   VIRTUAL VARSITY — STUDENT DASHBOARD STYLES
+   Imports shared.css for base tokens + adds student-specific UI
+   ============================================================ */
+@import url('shared.css');
+
+/* ── Student-specific variable aliases (backwards compat) ── */
+:root {
+    --maroon: var(--vv-maroon);
+    --maroon-deep: var(--vv-maroon-deep);
+    --maroon-line: var(--vv-maroon-light);
+    --gold: var(--vv-gold);
+    --gold-soft: var(--vv-gold-bright);
+    --paper: var(--vv-bg);
+    --paper-dim: var(--vv-bg-subtle);
+    --ink: var(--vv-text);
+    --ink-soft: var(--vv-text-secondary);
+    --line: var(--vv-border);
+
+    --gold-25: rgba(184, 134, 46, 0.25);
+    --gold-30: rgba(184, 134, 46, 0.30);
+    --gold-40: rgba(184, 134, 46, 0.40);
+    --paper-dim-50: rgba(245, 240, 234, 0.5);
+    --paper-dim-60: rgba(245, 240, 234, 0.6);
+    --ink-soft-70: rgba(87, 83, 78, 0.7);
+}
+
+[data-theme="dark"] {
+    --maroon: var(--vv-maroon);
+    --maroon-deep: var(--vv-maroon-deep);
+    --maroon-line: var(--vv-maroon-light);
+    --gold: var(--vv-gold);
+    --gold-soft: var(--vv-gold-bright);
+    --paper: var(--vv-bg);
+    --paper-dim: var(--vv-bg-subtle);
+    --ink: var(--vv-text);
+    --ink-soft: var(--vv-text-secondary);
+    --line: var(--vv-border);
+
+    --gold-25: rgba(229, 184, 88, 0.25);
+    --gold-30: rgba(229, 184, 88, 0.30);
+    --gold-40: rgba(229, 184, 88, 0.40);
+    --paper-dim-50: rgba(26, 14, 16, 0.5);
+    --paper-dim-60: rgba(26, 14, 16, 0.6);
+    --ink-soft-70: rgba(196, 181, 174, 0.7);
+}
+
+/* ── Seal Badge (student crest) ── */
+.seal {
+    width: 30px;
+    height: 30px;
+    border-radius: 9999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1.5px solid var(--vv-gold);
+    color: var(--vv-gold);
+    background: radial-gradient(circle at 30% 30%, #fff9ea, #fbf1d9 70%);
+    box-shadow: inset 0 0 0 1px rgba(184, 134, 46, 0.15);
+    font-size: 14px;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+[data-theme="dark"] .seal {
+    background: radial-gradient(circle at 30% 30%, var(--vv-gold-soft), var(--vv-maroon-deep) 70%);
+    box-shadow: inset 0 0 0 1px rgba(229, 184, 88, 0.2);
+}
+
+.seal:hover {
+    transform: scale(1.1) rotate(5deg);
+    box-shadow: 0 4px 12px var(--vv-gold-glow);
+}
+
+/* ── Ledger (kept as no-op for backward compat) ── */
+.ledger {}
+
+/* ── Range slider thumb ── */
+input[type="range"]::-webkit-slider-thumb {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+/* ── Student card hover elevation ── */
+.bg-white {
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+                box-shadow 0.4s ease,
+                border-color 0.3s ease !important;
+}
+
+.bg-white:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 32px -12px rgba(var(--vv-shadow-color), 0.08) !important;
+    border-color: var(--gold-25) !important;
+}
+
+html[data-theme="dark"] .bg-white:hover {
+    box-shadow: 0 16px 32px -12px rgba(0, 0, 0, 0.4) !important;
+}
+
+/* ── Student notice board scroll area ── */
+.space-y-3.max-h-\[300px\] {
+    scrollbar-width: thin;
+    scrollbar-color: var(--vv-border-strong) transparent;
+}
+
+/* ── Attendance card glow ring ── */
+@keyframes attendanceGlow {
+    0%, 100% {
+        box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.4);
+    }
+    50% {
+        box-shadow: 0 0 0 8px rgba(245, 158, 11, 0);
+    }
+}
+
+.attendance-ring {
+    animation: attendanceGlow 2s ease-in-out infinite;
+}
+
+/* ── Study planner progress bar ── */
+.planner-progress {
+    height: 6px;
+    border-radius: 9999px;
+    background: var(--vv-border);
+    overflow: hidden;
+}
+
+.planner-progress-fill {
+    height: 100%;
+    border-radius: 9999px;
+    background: linear-gradient(90deg, var(--vv-maroon), var(--vv-gold));
+    transition: width 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* ── Live meeting pulsing indicator ── */
+@keyframes liveDot {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.5; transform: scale(1.5); }
+}
+
+.live-indicator {
+    width: 8px;
+    height: 8px;
+    border-radius: 9999px;
+    background: var(--vv-danger);
+    animation: liveDot 1.5s ease-in-out infinite;
+    display: inline-block;
+}

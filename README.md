@@ -220,21 +220,41 @@ Administration
 ```
 Virtual-Varsity
 │
-├── admin_dashboard.php
-├── teacher_dashboard.php
-├── student_dashboard.php
-├── index.php
-├── db.php
-├── attendance_helpers.php
-├── generate_mcq_pdf.php
-├── get_live_classes.php
-├── live_status.php
-├── start_attendance.php
+├── assets/
+│   ├── css/
+│   │   ├── admin.css
+│   │   ├── index.css
+│   │   ├── student.css
+│   │   ├── teacher.css
+│   │   └── syllabus.css
+│   └── data/
+│       └── syllabus-data.json
+├── backend/
+│   ├── db.php
+│   ├── attendance_helpers.php
+│   ├── api/
+│   │   ├── delete_old_mcq.php
+│   │   ├── generate_mcq_pdf.php
+│   │   ├── get_live_classes.php
+│   │   ├── live_status.php
+│   │   ├── start_attendance.php
+│   │   └── update_live_status.php
+│   └── setup/
+│       ├── fresh_setup.php
+│       ├── migrate_admin_v2.php
+│       └── setup.php.old
 ├── uploads/
 ├── vendor/
+├── admin_dashboard.php
+├── index.php
+├── student_dashboard.php
+├── teacher_dashboard.php
+├── syllabus.html
 ├── composer.json
+├── composer.lock
 └── README.md
 ```
+
 
 ---
 

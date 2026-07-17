@@ -2,8 +2,8 @@
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
-include 'db.php';
-include 'attendance_helpers.php';
+include __DIR__ . '/../db.php';
+include __DIR__ . '/../attendance_helpers.php';
 header('Content-Type: application/json');
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
     echo json_encode(['error' => 'unauthorized']);
@@ -65,3 +65,4 @@ if ($live_meet) {
 }
 
 echo json_encode($response);
+?>

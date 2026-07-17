@@ -1,5 +1,5 @@
 <?php
-include 'db.php';
+include __DIR__ . '/../db.php';
 header('Content-Type: application/json');
 // ডাটাবেজ থেকে এই মুহূর্তের সকল 'LIVE NOW' *lecture/meet* সেশন তুলে আনা
 // FIX: আগে test_type filter ছিল না, তাই একই কোর্সের live Meet এবং live MCQ

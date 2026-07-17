@@ -1,7 +1,7 @@
 <?php
 // fresh_setup.php
 // পুরনো করাপ্ট ডাটাবেজ রিসেট করার পর এই স্ক্রিপ্টটি একবার ব্রাউজারে রান করলেই
-// (http://localhost/virtual-university/fresh_setup.php) সম্পূর্ণ ফ্রেশ ডাটাবেজ,
+// (http://localhost/virtual-university/backend/setup/fresh_setup.php) সম্পূর্ণ ফ্রেশ ডাটাবেজ,
 // সব টেবিল এবং ৭টি ডেমো অ্যাকাউন্ট (১ admin + ২ teacher + ৪ student) + কিছু
 // নমুনা কোর্স/enrollment তৈরি হয়ে যাবে।
 //
@@ -214,3 +214,4 @@ echo "=============================================================\n";
 echo "</pre>";
 
 $conn->close();
+?>

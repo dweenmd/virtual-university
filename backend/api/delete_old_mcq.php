@@ -9,7 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 
 header('Content-Type: application/json');
-include 'db.php';
+include __DIR__ . '/../db.php';
 
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized.']);
@@ -46,3 +46,4 @@ if ($stmt->execute()) {
     echo json_encode(['status' => 'error', 'message' => 'Database error: ' . $conn->error]);
 }
 $stmt->close();
+?>

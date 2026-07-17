@@ -1,0 +1,227 @@
+/* ============================================================
+   VIRTUAL VARSITY — ADMIN DASHBOARD STYLES
+   Imports shared.css for base tokens + adds admin-specific UI
+   ============================================================ */
+@import url('shared.css');
+
+/* ── Admin-specific variable overrides ── */
+:root {
+    --maroon: var(--vv-maroon);
+    --maroon-deep: var(--vv-maroon-deep);
+    --maroon-line: var(--vv-maroon-light);
+    --gold: var(--vv-gold);
+    --gold-soft: var(--vv-gold-bright);
+    --gold-deep: #856016;
+
+    --bg-app: var(--vv-bg);
+    --bg-sidebar: #3d0510;
+    --bg-sidebar-hover: #5a0e1f;
+    --bg-card: var(--vv-bg-elevated);
+    --border-card: var(--vv-border);
+    --text-main: var(--vv-text);
+    --text-muted: var(--vv-text-secondary);
+    --input-bg: var(--vv-input-bg);
+    --input-border: var(--vv-border);
+    --gold-tint: #faf3e2;
+    --shadow-card: 0 1px 3px rgba(var(--vv-shadow-color), 0.07), 0 1px 2px rgba(var(--vv-shadow-color), 0.05);
+    --shadow-card-lg: 0 10px 26px rgba(var(--vv-shadow-color), 0.09), 0 2px 6px rgba(var(--vv-shadow-color), 0.06);
+    --emerald: var(--vv-success);
+    --emerald-soft: var(--vv-success-soft);
+    --rose: var(--vv-danger);
+    --rose-soft: var(--vv-danger-soft);
+}
+
+[data-theme="dark"] {
+    --bg-app: #1c1210;
+    --bg-sidebar: #1A0508;
+    --bg-sidebar-hover: #3d0a14;
+    --bg-card: var(--vv-bg-elevated);
+    --border-card: var(--vv-border);
+    --text-main: var(--vv-text);
+    --text-muted: var(--vv-text-secondary);
+    --gold: var(--vv-gold);
+    --gold-deep: var(--vv-gold-bright);
+    --gold-tint: #322114;
+    --input-bg: var(--vv-input-bg);
+    --input-border: var(--vv-border);
+    --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.35);
+    --shadow-card-lg: 0 10px 30px rgba(0, 0, 0, 0.5);
+    --emerald: var(--vv-success);
+    --emerald-soft: var(--vv-success-soft);
+    --rose: var(--vv-danger);
+    --rose-soft: var(--vv-danger-soft);
+}
+
+/* ── Theme transition for all ── */
+* {
+    transition: background-color .2s ease, border-color .2s ease, color .2s ease;
+}
+
+body {
+    background: var(--bg-app);
+    color: var(--text-main);
+    font-family: 'Inter', sans-serif;
+    font-size: 15px;
+}
+
+/* ── Card system ── */
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    box-shadow: var(--shadow-card);
+    border-radius: 1rem;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-card-lg);
+}
+
+.card-lg-shadow {
+    box-shadow: var(--shadow-card-lg);
+}
+
+.text-main { color: var(--text-main); }
+.text-muted-c { color: var(--text-muted); }
+
+/* ── Input system ── */
+.input-field {
+    background: var(--input-bg);
+    border: 1.5px solid var(--input-border);
+    color: var(--text-main);
+    border-radius: 0.75rem;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+}
+
+.input-field::placeholder {
+    color: var(--text-muted);
+}
+
+.input-field:focus {
+    outline: none;
+    border-color: var(--gold);
+    box-shadow: 0 0 0 4px var(--vv-gold-glow);
+}
+
+/* ── Color utility classes ── */
+.gold-accent { color: var(--gold-deep); }
+.gold-bg { background: linear-gradient(135deg, var(--gold-soft) 0%, var(--gold-deep) 100%); }
+.gold-soft-bg { background: var(--gold-tint); }
+.emerald-soft-bg { background: var(--emerald-soft); }
+.emerald-text { color: var(--emerald); }
+.rose-soft-bg { background: var(--rose-soft); }
+.rose-text { color: var(--rose); }
+
+/* ── Sidebar ── */
+.sidebar-shell {
+    background: linear-gradient(180deg, var(--bg-sidebar) 0%, #1A0308 100%);
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.15);
+}
+
+.sidebar-brand-ring {
+    box-shadow: 0 0 0 3px rgba(201, 162, 39, 0.2);
+}
+
+.sidebar-link {
+    color: #d9c3bc;
+    border: 1px solid transparent;
+    border-radius: 0.625rem;
+    transition: all 0.25s ease;
+}
+
+.sidebar-link:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #fff;
+    transform: translateX(3px);
+}
+
+.sidebar-link.active {
+    background: rgba(201, 162, 39, 0.14);
+    color: #fff;
+    border-color: rgba(201, 162, 39, 0.35);
+    box-shadow: inset 3px 0 0 var(--vv-gold);
+}
+
+.sidebar-link.active .sidebar-icon-box {
+    background: var(--gold-soft);
+    color: #3d0510;
+}
+
+.sidebar-icon-box {
+    background: rgba(255, 255, 255, 0.06);
+    color: #e9d9b8;
+    width: 32px;
+    height: 32px;
+    border-radius: 9px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    transition: background-color 0.25s ease, color 0.25s ease;
+}
+
+.sidebar-divider {
+    border-color: rgba(255, 255, 255, 0.08);
+}
+
+/* ── Data table ── */
+table.data-table thead {
+    background: var(--input-bg);
+}
+
+table.data-table tbody tr {
+    border-color: var(--border-card);
+    transition: background-color 0.2s ease;
+}
+
+table.data-table tbody tr:hover {
+    background: var(--gold-tint);
+}
+
+/* ── Toast animation ── */
+@keyframes toast-in {
+    from { transform: translateX(120%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+/* ── Tab button system ── */
+.tab-btn {
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-radius: 0.5rem;
+}
+
+.tab-btn.active {
+    background: var(--maroon);
+    color: #fff;
+    box-shadow: 0 4px 12px var(--vv-maroon-glow);
+}
+
+.tab-btn:not(.active) {
+    color: var(--text-muted);
+}
+
+.tab-btn:not(.active):hover {
+    background: var(--input-bg);
+    color: var(--text-main);
+}
+
+/* ── Mobile sidebar backdrop ── */
+#mobile-sidebar-backdrop {
+    backdrop-filter: blur(4px);
+}
+
+/* ── Admin stat cards ── */
+.admin-stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-card);
+    border-radius: 1rem;
+    padding: 1.25rem;
+    transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.3s ease;
+}
+
+.admin-stat-card:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--shadow-card-lg);
+}

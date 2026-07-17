@@ -3,7 +3,7 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-include 'db.php';
+include __DIR__ . '/../db.php';
 header('Content-Type: application/json');
 
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'teacher') {
@@ -45,3 +45,4 @@ $conn->query("
 ");
 
 echo json_encode(['status' => 'success', 'token' => $token, 'duration' => 120]);
+?>

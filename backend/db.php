@@ -38,4 +38,16 @@ $conn->query("SET time_zone = '+06:00'");
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
+
+// Auto-create announcements table if missing
+$conn->query("
+    CREATE TABLE IF NOT EXISTS announcements (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        course_id INT NOT NULL,
+        title VARCHAR(255) NOT NULL,
+        content TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (course_id) REFERENCES courses(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB
+");
 ?>

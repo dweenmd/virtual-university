@@ -4,8 +4,8 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
-include 'db.php';
-include 'attendance_helpers.php';
+include '../backend/db.php';
+include '../backend/attendance_helpers.php';
 
 // 2. Session verify
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'student') {
@@ -313,6 +313,23 @@ if ($lecture_notes_query) {
 
 // Registered Syllabus list fetch
 $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM courses LEFT JOIN users ON courses.teacher_id = users.id ORDER BY courses.semester ASC");
+
+// Course announcements fetch
+$announcements_query = $conn->query("
+    SELECT a.*, c.course_code, c.title AS course_title
+    FROM announcements a
+    JOIN courses c ON a.course_id = c.id
+    JOIN academic_records ar ON c.id = ar.course_id
+    WHERE ar.student_id = '$student_id'
+    ORDER BY a.created_at DESC
+    LIMIT 5
+");
+$announcements_list = [];
+if ($announcements_query) {
+    while ($row = $announcements_query->fetch_assoc()) {
+        $announcements_list[] = $row;
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -327,98 +344,18 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
     <link
         href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@500;600;700&display=swap"
         rel="stylesheet">
-    <style>
-        :root {
-            --maroon: #73001a;
-            --maroon-deep: #3d0510;
-            --maroon-line: #a31d34;
-            --gold: #a3781f;
-            --gold-soft: #c9a227;
-            --paper: #f7f4ee;
-            --paper-dim: #efe9dd;
-            --ink: #251b16;
-            --ink-soft: #7c7166;
-            --line: #e2d9c8;
-
-            /* Pre-mixed tints: Tailwind's arbitrary-value opacity modifier
-               (e.g. bg-[var(--gold-25)]) does not reliably resolve against a
-               CSS custom property in the browser JIT compiler, so those
-               utilities were silently producing no color at all. Baking the
-               opacity into the variable itself avoids that failure mode. */
-            --gold-25: rgba(163, 120, 31, 0.25);
-            --gold-30: rgba(163, 120, 31, 0.30);
-            --gold-40: rgba(163, 120, 31, 0.40);
-            --paper-dim-50: rgba(239, 233, 221, 0.5);
-            --paper-dim-60: rgba(239, 233, 221, 0.6);
-            --ink-soft-70: rgba(124, 113, 102, 0.7);
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--paper);
-            color: var(--ink);
-            font-size: 16px;
-        }
-
-        .font-display {
-            font-family: 'Fraunces', serif;
-            font-optical-sizing: auto;
-        }
-
-        .font-data {
-            font-family: 'IBM Plex Mono', monospace;
-        }
-
-        /* .ledger previously drew faint horizontal rule-lines as a "transcript
-           paper" texture; removed per feedback, kept as a no-op so existing
-           markup doesn't need to change. */
-        .ledger {}
-
-        .seal {
-            width: 30px;
-            height: 30px;
-            border-radius: 9999px;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            border: 1.5px solid var(--gold);
-            color: var(--gold);
-            background: radial-gradient(circle at 30% 30%, #fff9ea, #fbf1d9 70%);
-            box-shadow: inset 0 0 0 1px rgba(163, 120, 31, 0.15);
-            font-size: 14px;
-        }
-
-        ::selection {
-            background: var(--gold-soft);
-            color: var(--maroon-deep);
-        }
-
-        input[type="range"]::-webkit-slider-thumb {
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
-        }
-
-        details.archive-toggle>summary,
-        details summary {
-            list-style: none;
-            cursor: pointer;
-        }
-
-        details.archive-toggle>summary::-webkit-details-marker,
-        details summary::-webkit-details-marker {
-            display: none;
-        }
-
-        details.archive-toggle[open]>summary .archive-chevron {
-            transform: rotate(180deg);
-        }
-
-        .archive-chevron {
-            transition: transform 0.2s ease;
-        }
-    </style>
+    <link rel="stylesheet" href="assets/css/student.css">
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('vv_theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+        })();
+    </script>
 </head>
 
 <body class="antialiased">
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-24 right-6 z-50 space-y-3 w-80 pointer-events-none"></div>
 
     <nav
         class="bg-white/90 backdrop-blur sticky top-0 z-50 border-b border-[var(--line)] px-6 py-4 flex justify-between items-center">
@@ -442,6 +379,10 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                 <p class="text-xs text-[var(--ink-soft)] font-data uppercase tracking-wide">ID
                     #<?php echo $student_id; ?></p>
             </div>
+            <!-- Theme Toggle Button -->
+            <button onclick="toggleTheme()" id="theme-toggle-btn" class="w-10 h-10 flex items-center justify-center rounded-lg border border-[var(--line)] text-[var(--ink-soft)] hover:bg-[var(--paper-dim)] transition cursor-pointer" aria-label="Toggle theme">
+                <span id="theme-toggle-icon" class="text-lg">🌙</span>
+            </button>
             <a href="index.php"
                 class="bg-[var(--maroon)] text-white px-5 py-2.5 rounded-lg text-sm font-semibold tracking-wide hover:bg-[var(--maroon-deep)] transition">Logout</a>
         </div>
@@ -458,6 +399,39 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
                     <span><?php echo htmlspecialchars($msg); ?></span>
                 </div>
             <?php endif; ?>
+
+            <!-- Notice Board / Broadcast Announcements -->
+            <div class="bg-white p-6 rounded-2xl border border-[var(--line)] space-y-4">
+                <div class="flex justify-between items-center pb-3 border-b border-[var(--line)]">
+                    <div class="flex items-center space-x-2">
+                        <span class="text-xl">📢</span>
+                        <h3 class="font-display text-lg font-semibold text-[var(--ink)]">Virtual Notice Board</h3>
+                    </div>
+                    <span class="text-[10px] bg-[var(--maroon)] text-white px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">Live Feed</span>
+                </div>
+                
+                <?php if (!empty($announcements_list)): ?>
+                    <div class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                        <?php foreach ($announcements_list as $ann): ?>
+                            <div class="p-4 bg-[var(--paper-dim-50)] border border-[var(--line)] rounded-xl space-y-2 hover:border-[var(--gold-25)] transition">
+                                <div class="flex justify-between items-start flex-wrap gap-2">
+                                    <div class="flex items-center space-x-2">
+                                        <span class="font-data text-[10px] uppercase font-bold text-[var(--maroon)] bg-[var(--paper)] px-2.5 py-0.5 rounded border border-[var(--line)]"><?php echo htmlspecialchars($ann['course_code']); ?></span>
+                                        <h4 class="font-semibold text-xs text-[var(--ink)]"><?php echo htmlspecialchars($ann['title']); ?></h4>
+                                    </div>
+                                    <span class="text-[9px] text-[var(--ink-soft)] font-data"><?php echo date("d M Y, h:i A", strtotime($ann['created_at'])); ?></span>
+                                </div>
+                                <p class="text-xs text-[var(--ink-soft)] leading-relaxed"><?php echo nl2br(htmlspecialchars($ann['content'])); ?></p>
+                            </div>
+                        <?php endforeach; ?>
+                    </div>
+                <?php else: ?>
+                    <div class="text-center py-8 bg-[var(--paper-dim-50)] rounded-xl border border-dashed border-[var(--line)]">
+                        <span class="text-3xl block mb-2">📭</span>
+                        <p class="text-xs text-[var(--ink-soft)] italic">No active announcements from your course instructors.</p>
+                    </div>
+                <?php endif; ?>
+            </div>
 
             <!-- live meet and attendance cards are independent of any live MCQ session, so they are displayed first. The
             attendance card is only shown if the teacher has opened a 2-minute window and the student hasn't verified
@@ -1006,28 +980,85 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
             </div>
         </div>
 
-        <!-- Sidebar: registered courses -->
-        <div class="bg-white p-6 rounded-2xl border border-[var(--line)] h-fit lg:sticky lg:top-24">
-            <h3 class="font-display text-lg font-semibold text-[var(--ink)] mb-4 pb-3 border-b border-[var(--line)]">
-                Registered Courses</h3>
-            <div class="space-y-3 max-h-[550px] overflow-y-auto pr-1">
-                <?php if ($courses && $courses->num_rows > 0) {
-                    while ($c = $courses->fetch_assoc()) { ?>
-                        <div
-                            class="p-4 bg-[var(--paper-dim-50)] border border-[var(--line)] rounded-xl text-sm hover:border-[var(--gold-40)] transition">
-                            <span
-                                class="font-data font-semibold text-[var(--maroon)] bg-white px-2.5 py-1 rounded border border-[var(--gold-25)] text-[11px] tracking-wide uppercase"><?php echo htmlspecialchars($c['course_code']); ?></span>
-                            <h4 class="font-semibold text-[var(--ink)] mt-2 leading-tight">
-                                <?php echo htmlspecialchars($c['title']); ?>
-                            </h4>
-                            <p class="text-xs text-[var(--ink-soft)] mt-1">Faculty —
-                                <?php echo htmlspecialchars($c['teacher_name'] ?? 'Not Assigned'); ?>
-                            </p>
-                        </div>
-                    <?php }
-                } else {
-                    echo "<p class='text-sm text-[var(--ink-soft)] text-center py-4'>No courses found.</p>";
-                } ?>
+        <!-- Sidebar: registered courses & study planner -->
+        <div class="space-y-6 lg:sticky lg:top-24 h-fit">
+            <div class="bg-white p-6 rounded-2xl border border-[var(--line)]">
+                <h3 class="font-display text-lg font-semibold text-[var(--ink)] mb-4 pb-3 border-b border-[var(--line)]">
+                    Registered Courses</h3>
+                <div class="space-y-3 max-h-[350px] overflow-y-auto pr-1">
+                    <?php if ($courses && $courses->num_rows > 0) {
+                        mysqli_data_seek($courses, 0);
+                        while ($c = $courses->fetch_assoc()) { ?>
+                            <div
+                                class="p-4 bg-[var(--paper-dim-50)] border border-[var(--line)] rounded-xl text-sm hover:border-[var(--gold-40)] transition">
+                                <span
+                                    class="font-data font-semibold text-[var(--maroon)] bg-white px-2.5 py-1 rounded border border-[var(--gold-25)] text-[11px] tracking-wide uppercase"><?php echo htmlspecialchars($c['course_code']); ?></span>
+                                <h4 class="font-semibold text-[var(--ink)] mt-2 leading-tight">
+                                    <?php echo htmlspecialchars($c['title']); ?>
+                                </h4>
+                                <p class="text-xs text-[var(--ink-soft)] mt-1">Faculty —
+                                    <?php echo htmlspecialchars($c['teacher_name'] ?? 'Not Assigned'); ?>
+                                </p>
+                                <button onclick="showSyllabusModal('<?php echo htmlspecialchars($c['course_code']); ?>')" class="mt-3 text-[11px] font-bold text-[var(--maroon)] hover:text-[var(--maroon-line)] flex items-center gap-1 cursor-pointer">
+                                    📖 View Syllabus & Topics
+                                </button>
+                            </div>
+                        <?php }
+                    } else {
+                        echo "<p class='text-sm text-[var(--ink-soft)] text-center py-4'>No courses found.</p>";
+                    } ?>
+                </div>
+            </div>
+
+            <!-- Personal Study Planner & Task List Card -->
+            <div class="bg-white p-6 rounded-2xl border border-[var(--line)]">
+                <h3 class="font-display text-lg font-semibold text-[var(--ink)] mb-1 pb-1">
+                    🎯 Study Planner</h3>
+                <p class="text-xs text-[var(--ink-soft)] mb-4">Track your tasks & syllabus milestones</p>
+                
+                <!-- Task Stats and Progress -->
+                <div class="mb-4">
+                    <div class="flex justify-between items-center text-xs mb-1.5">
+                        <span class="font-medium text-[var(--ink)]" id="todo-stats">0 of 0 completed</span>
+                        <span class="font-bold text-[var(--gold)]" id="todo-percent">0%</span>
+                    </div>
+                    <div class="w-full bg-[var(--paper-dim)] h-1.5 rounded-full overflow-hidden">
+                        <div id="todo-progress-bar" class="bg-gradient-to-r from-[var(--maroon)] to-[var(--gold)] h-full rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Add Task Input Form -->
+                <div class="flex space-x-2 mb-4">
+                    <input type="text" id="todo-input" placeholder="Add study target..." class="w-full bg-[var(--paper)] text-[var(--ink)] text-xs border border-[var(--line)] rounded-lg px-3 py-2.5 focus:outline-none focus:border-[var(--maroon)] focus:ring-2 focus:ring-[var(--maroon)]/10">
+                    <button onclick="addTodoItem()" class="bg-[var(--maroon)] hover:bg-[var(--maroon-deep)] text-white font-bold px-3 py-2.5 rounded-lg text-xs transition cursor-pointer">+</button>
+                </div>
+
+                <!-- Task List -->
+                <div id="todo-list" class="space-y-2.5 max-h-[250px] overflow-y-auto pr-1">
+                    <!-- Javascript will inject list items here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Syllabus Quick View Modal -->
+    <div id="syllabus-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-xs hidden opacity-0 transition-opacity duration-300">
+        <div class="bg-[var(--paper-dim)] border border-[var(--line)] w-full max-w-lg p-6 rounded-2xl shadow-xl transform scale-95 transition-all duration-350 mx-4 relative">
+            <button onclick="closeSyllabusModal()" class="absolute right-4 top-4 text-[var(--ink-soft)] hover:text-[var(--ink)] text-xl font-bold cursor-pointer p-1">&times;</button>
+            <div class="border-b border-[var(--line)] pb-3">
+                <span id="modal-course-code" class="font-data text-xs font-bold text-[var(--maroon)] bg-[var(--paper)] px-2.5 py-1 rounded border border-[var(--line)] uppercase"></span>
+                <h3 id="modal-course-title" class="font-display text-xl font-bold text-[var(--ink)] mt-3"></h3>
+            </div>
+            <div class="mt-4 space-y-4 text-sm text-[var(--ink)] max-h-[350px] overflow-y-auto pr-1">
+                <div class="grid grid-cols-2 gap-2 text-xs bg-[var(--paper)] p-3 rounded-xl border border-[var(--line)]">
+                    <p><strong class="text-[var(--ink-soft)]">Credits:</strong> <span id="modal-course-credits" class="font-semibold"></span></p>
+                    <p><strong class="text-[var(--ink-soft)]">Hours:</strong> <span id="modal-course-hours" class="font-semibold"></span></p>
+                    <p class="col-span-2"><strong class="text-[var(--ink-soft)]">Prerequisite:</strong> <span id="modal-course-prereq" class="font-semibold"></span></p>
+                </div>
+                <div>
+                    <h4 class="font-bold text-[var(--ink-soft)] mb-2 uppercase text-[10px] tracking-wider">Course Outline</h4>
+                    <div id="modal-course-content" class="text-xs leading-relaxed text-[var(--ink)] space-y-2 bg-[var(--paper)] border border-[var(--line)] p-4 rounded-xl"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -1167,17 +1198,284 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
             }
         }
 
+        // Theme toggle helper functions
+        function applyTheme(theme) {
+            document.documentElement.setAttribute('data-theme', theme);
+            document.documentElement.classList.toggle('dark', theme === 'dark');
+            const btnIcon = document.getElementById('theme-toggle-icon');
+            if (btnIcon) {
+                btnIcon.textContent = theme === 'dark' ? '☀️' : '🌙';
+            }
+        }
+
+        function toggleTheme() {
+            const current = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+            const next = current === 'dark' ? 'light' : 'dark';
+            localStorage.setItem('vv_theme', next);
+            applyTheme(next);
+        }
+
+        // XSS protection
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+
+        // Study Planner / To-Do List Javascript
+        const STORAGE_KEY = 'vv_student_todos';
+        let todos = [];
+
+        function loadTodos() {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            todos = raw ? JSON.parse(raw) : [
+                { id: 1, text: 'Review syllabus for next Semester', completed: false },
+                { id: 2, text: 'Prepare notes on Database Systems', completed: true },
+                { id: 3, text: 'Complete Assignment #1', completed: false }
+            ];
+            renderTodos();
+        }
+
+        function saveTodos() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
+            renderTodos();
+        }
+
+        function addTodoItem() {
+            const input = document.getElementById('todo-input');
+            if (!input) return;
+            const text = input.value.trim();
+            if (!text) return;
+            todos.push({
+                id: Date.now(),
+                text: text,
+                completed: false
+            });
+            input.value = '';
+            saveTodos();
+        }
+
+        function toggleTodo(id) {
+            todos = todos.map(t => t.id === id ? { ...t, completed: !t.completed } : t);
+            saveTodos();
+        }
+
+        function deleteTodo(id) {
+            todos = todos.filter(t => t.id !== id);
+            saveTodos();
+        }
+
+        function renderTodos() {
+            const container = document.getElementById('todo-list');
+            const statsEl = document.getElementById('todo-stats');
+            const percentEl = document.getElementById('todo-percent');
+            const progressEl = document.getElementById('todo-progress-bar');
+            if (!container) return;
+
+            if (todos.length === 0) {
+                container.innerHTML = `<p class="text-xs text-[var(--ink-soft)] italic text-center py-4">No tasks planned yet. Add one above!</p>`;
+                if (statsEl) statsEl.textContent = '0 tasks';
+                if (percentEl) percentEl.textContent = '0%';
+                if (progressEl) progressEl.style.width = '0%';
+                return;
+            }
+
+            const completedCount = todos.filter(t => t.completed).length;
+            const pct = Math.round((completedCount / todos.length) * 100);
+
+            if (statsEl) statsEl.textContent = `${completedCount} of ${todos.length} completed`;
+            if (percentEl) percentEl.textContent = `${pct}%`;
+            if (progressEl) progressEl.style.width = `${pct}%`;
+
+            container.innerHTML = todos.map(t => `
+                <div class="flex items-center justify-between p-2.5 bg-[var(--paper-dim-50)] border border-[var(--line)] rounded-xl text-xs hover:border-[var(--gold-25)] transition group">
+                    <label class="flex items-center space-x-2.5 cursor-pointer select-none grow pr-2">
+                        <input type="checkbox" onclick="toggleTodo(${t.id})" ${t.completed ? 'checked' : ''} class="w-4 h-4 rounded text-[var(--maroon)] border-[var(--line)] focus:ring-0 cursor-pointer">
+                        <span class="${t.completed ? 'line-through text-[var(--ink-soft)]' : 'text-[var(--ink)]'} font-medium">${escapeHtml(t.text)}</span>
+                    </label>
+                    <button onclick="deleteTodo(${t.id})" class="text-rose-500 hover:text-rose-700 opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 cursor-pointer p-0.5" title="Delete task">✕</button>
+                </div>
+            `).join('');
+        }
+
+        // Syllabus modal logic
+        let syllabusData = null;
+
+        async function fetchSyllabus() {
+            if (syllabusData) return;
+            try {
+                const res = await fetch('assets/data/syllabus-data.json');
+                syllabusData = await res.json();
+            } catch (e) {
+                console.error('Failed to load syllabus JSON', e);
+            }
+        }
+
+        async function showSyllabusModal(code) {
+            await fetchSyllabus();
+            if (!syllabusData) {
+                alert('Curriculum outline loading, please try again.');
+                return;
+            }
+
+            // Find course in semesters
+            let found = null;
+            for (const semKey in syllabusData.semesters) {
+                const sem = syllabusData.semesters[semKey];
+                const match = sem.courses.find(c => c.code.toLowerCase() === code.toLowerCase());
+                if (match) {
+                    found = match;
+                    break;
+                }
+            }
+
+            if (!found) {
+                alert('Curriculum outlines not available for this custom or external course.');
+                return;
+            }
+
+            document.getElementById('modal-course-code').textContent = found.code;
+            document.getElementById('modal-course-title').textContent = found.title;
+            document.getElementById('modal-course-credits').textContent = found.credits;
+            document.getElementById('modal-course-hours').textContent = found.hours + ' Hours';
+            document.getElementById('modal-course-prereq').textContent = found.prerequisite || 'None';
+            document.getElementById('modal-course-content').innerHTML = found.content || 'Outline details not specified.';
+
+            const modal = document.getElementById('syllabus-modal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.firstElementChild.classList.remove('scale-95');
+            }, 50);
+        }
+
+        function closeSyllabusModal() {
+            const modal = document.getElementById('syllabus-modal');
+            modal.firstElementChild.classList.add('scale-95');
+            modal.classList.add('opacity-0');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+            }, 300);
+        }
+
+        // Notification Audio/Visual Handlers
+        let attendanceActiveState = false;
+
+        function playNotificationSound() {
+            try {
+                const context = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // First tone (G5)
+                const osc1 = context.createOscillator();
+                const gain1 = context.createGain();
+                osc1.type = 'sine';
+                osc1.frequency.setValueAtTime(783.99, context.currentTime); // G5
+                gain1.gain.setValueAtTime(0.08, context.currentTime);
+                gain1.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 1.2);
+                osc1.connect(gain1);
+                gain1.connect(context.destination);
+                osc1.start();
+                osc1.stop(context.currentTime + 1.2);
+
+                // Second tone (E5) after 0.22 seconds
+                setTimeout(() => {
+                    const osc2 = context.createOscillator();
+                    const gain2 = context.createGain();
+                    osc2.type = 'sine';
+                    osc2.frequency.setValueAtTime(659.25, context.currentTime); // E5
+                    gain2.gain.setValueAtTime(0.12, context.currentTime);
+                    gain2.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 1.5);
+                    osc2.connect(gain2);
+                    gain2.connect(context.destination);
+                    osc2.start();
+                    osc2.stop(context.currentTime + 1.5);
+                }, 220);
+            } catch (e) {
+                console.warn('Audio Context is blocked or not supported', e);
+            }
+        }
+
+        function scrollToAttendanceCard() {
+            const card = document.getElementById('attendance-card');
+            if (card) {
+                // Scroll smoothly to the attendance card
+                card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                
+                // Focus the pin input field and trigger highlight animation
+                const pinInput = card.querySelector('input[name="token_code"]');
+                if (pinInput) {
+                    setTimeout(() => {
+                        pinInput.focus();
+                        // Add a visual pulse ring to draw immediate attention
+                        card.classList.add('ring-4', 'ring-amber-500', 'animate-pulse');
+                        setTimeout(() => {
+                            card.classList.remove('ring-4', 'ring-amber-500', 'animate-pulse');
+                        }, 2500);
+                    }, 500);
+                }
+            }
+        }
+
+        function triggerAttendanceNotification(att) {
+            playNotificationSound();
+
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const toast = document.createElement('div');
+            toast.className = "bg-gradient-to-r from-amber-600 to-amber-700 text-white p-4 rounded-xl shadow-lg border border-amber-300/20 flex items-start space-x-3 pointer-events-auto transform translate-x-full transition-transform duration-300 cursor-pointer hover:brightness-105 active:scale-[0.98] transition-all";
+            
+            // Clicking anywhere on toast (except close button) triggers scroll-to-card
+            toast.onclick = function(e) {
+                if (e.target.tagName.toLowerCase() === 'button') return;
+                scrollToAttendanceCard();
+                // Slide out and remove toast on click
+                toast.classList.add('translate-x-full');
+                setTimeout(() => { toast.remove(); }, 300);
+            };
+
+            toast.innerHTML = `
+                <span class="text-2xl animate-bounce">🔔</span>
+                <div class="flex-1">
+                    <h4 class="font-bold text-xs uppercase tracking-wider text-amber-100">Attendance Started!</h4>
+                    <p class="text-xs mt-1 text-white/90">An attendance window has been opened for <strong>${escapeHtml(att.course_code || 'Live Lecture')}</strong>. Click here to enter PIN!</p>
+                </div>
+                <button class="text-white/60 hover:text-white font-bold text-sm cursor-pointer p-0.5" onclick="event.stopPropagation(); this.parentElement.remove()">&times;</button>
+            `;
+            container.appendChild(toast);
+
+            // Slide in
+            setTimeout(() => {
+                toast.classList.remove('translate-x-full');
+            }, 50);
+
+            // Auto remove after 10 seconds
+            setTimeout(() => {
+                if (toast.parentElement) {
+                    toast.classList.add('translate-x-full');
+                    setTimeout(() => {
+                        toast.remove();
+                    }, 300);
+                }
+            }, 10000);
+        }
+
         async function pollLiveStatus() {
             try {
-                const res = await fetch('live_status.php');
+                const res = await fetch('../backend/api/live_status.php');
                 const data = await res.json();
 
                 updateMeetCard(data.meet);
 
                 if (data.attendance) {
                     showAttendanceCard(data.attendance);
+
+                    // Trigger alert notification when attendance transitions from inactive to active
+                    if (!attendanceActiveState) {
+                        attendanceActiveState = true;
+                        triggerAttendanceNotification(data.attendance);
+                    }
                 } else {
                     hideAttendanceCard();
+                    attendanceActiveState = false;
                 }
             } catch (e) {
                 console.error('Live status poll failed', e);
@@ -1185,6 +1483,23 @@ $courses = $conn->query("SELECT courses.*, users.name AS teacher_name FROM cours
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            // Apply theme on load
+            const saved = localStorage.getItem('vv_theme') || 'light';
+            applyTheme(saved);
+
+            // Load todo items
+            loadTodos();
+
+            // Handle todo keyboard submit (Enter key)
+            const todoInput = document.getElementById('todo-input');
+            if (todoInput) {
+                todoInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        addTodoItem();
+                    }
+                });
+            }
+
             <?php if ($attendance_active): ?>
                 updateAttendanceTimerDisplay();
                 startLocalCountdown();
