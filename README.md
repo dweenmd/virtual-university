@@ -413,6 +413,7 @@ Distributed under the **MIT License**.
 **Dween Mohammad | Nazerin Kabir | Tahmina Bahar Khan**
 
 🌐 https://github.com/dweenmd/
+🌐 https://github.com/nazerindisha/
 
 ---
 
