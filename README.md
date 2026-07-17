@@ -411,9 +411,9 @@ Distributed under the **MIT License**.
 
 ## 👨‍💻 Developed By
 
-**Your Name**
+**Dween Mohammad | Nazerin Kabir | Tahmina Bahar Khan**
 
-🌐 https://github.com/yourusername
+🌐 https://github.com/dweenmd/
 
 ---
 
