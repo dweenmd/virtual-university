@@ -17,7 +17,7 @@ if ($_SERVER['SERVER_NAME'] === 'localhost') {
     // InfinityFree live server
     $host = "sql103.infinityfree.com";
     $username = "if0_42374690";
-    $password = ""; // <-- put the real password here locally
+    $password = ""; // <-- put the real password 
     $dbname = "if0_42374690_virtual_university";
     $port = 3306; // InfinityFree MySQL port
 }

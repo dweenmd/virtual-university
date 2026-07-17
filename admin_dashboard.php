@@ -111,8 +111,12 @@ try {
             exit();
         }
 
-        // id_no/semester are included with safe defaults in case those columns are NOT NULL for other roles
-        $sql = "INSERT INTO users (name, email, password, id_no, role, semester) VALUES ('$name', '$email', '$password', '', 'teacher', 0)";
+        // id_no/semester are included with safe defaults in case those columns are NOT NULL for other roles.
+        // FIX: use a unique placeholder instead of a blank string — if id_no has a UNIQUE constraint (as it
+        // typically does for student registration numbers), inserting '' for every teacher causes a
+        // "Duplicate entry '' for key 'id_no'" database error starting from the 2nd teacher onward.
+        $teacher_id_no = mysqli_real_escape_string($conn, 'T-' . uniqid());
+        $sql = "INSERT INTO users (name, email, password, id_no, role, semester) VALUES ('$name', '$email', '$password', '$teacher_id_no', 'teacher', 0)";
         if ($conn->query($sql)) {
             echo json_encode([
                 'status' => 'success',
