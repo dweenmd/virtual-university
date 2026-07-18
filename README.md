@@ -419,6 +419,6 @@ Distributed under the **MIT License**.
 
 ### ⭐ Thanks for visiting ⭐
 
-Made with ❤️ using PHP & Tailwind CSS
+Made with using PHP & Tailwind CSS
 
 </div>
